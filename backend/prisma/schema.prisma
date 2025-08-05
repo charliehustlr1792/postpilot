@@ -1,0 +1,95 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  password    String
+  name        String?
+  avatar      String?
+  plan        Plan     @default(FREE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  accounts    SocialAccount[]
+  posts       Post[]
+  analytics   Analytics[]
+}
+
+model SocialAccount {
+  id          String   @id @default(cuid())
+  platform    Platform
+  username    String
+  accessToken String
+  refreshToken String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  posts       Post[]
+}
+
+model Post {
+  id          String     @id @default(cuid())
+  content     String
+  images      String[]   @default([])
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  status      PostStatus @default(DRAFT)
+  
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+  accountId   String
+  account     SocialAccount @relation(fields: [accountId], references: [id])
+  
+  analytics   Analytics[]
+}
+
+model Analytics {
+  id          String @id @default(cuid())
+  postId      String
+  post        Post   @relation(fields: [postId], references: [id])
+
+  userId      String
+  user        User   @relation(fields: [userId], references: [id])
+
+  impressions Int    @default(0)
+  likes       Int    @default(0)
+  shares      Int    @default(0)
+  comments    Int    @default(0)
+  clicks      Int    @default(0)
+  
+  recordedAt  DateTime @default(now())
+}
+
+enum Platform {
+  TWITTER
+  INSTAGRAM
+  LINKEDIN
+  FACEBOOK
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  FAILED
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
