@@ -15,18 +15,19 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  password    String
-  name        String?
-  avatar      String?
-  plan        Plan     @default(FREE)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  clerkId   String   @unique  // Add this for Clerk integration
+  email     String   @unique
+  firstName String? 
+  lastName  String?
+  avatar    String?
+  plan      Plan     @default(FREE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   
-  accounts    SocialAccount[]
-  posts       Post[]
-  analytics   Analytics[]
+  accounts  SocialAccount[]
+  posts     Post[]
+  analytics Analytics[]
 }
 
 model SocialAccount {
