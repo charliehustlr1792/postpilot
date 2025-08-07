@@ -82,8 +82,14 @@ model Analytics {
   shares      Int    @default(0)
   comments    Int    @default(0)
   clicks      Int    @default(0)
+  reach      Int    @default(0)
+  saves       Int    @default(0)
+
+  engagementRate Float @default(0)
+  ctr           Float @default(0)
   
   recordedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
 }
 
 enum Platform {
