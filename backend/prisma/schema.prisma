@@ -59,6 +59,7 @@ model Post {
   scheduledAt DateTime?
   publishedAt DateTime?
   status      PostStatus @default(DRAFT)
+  platform    Platform
   
   userId      String
   user        User       @relation(fields: [userId], references: [id])

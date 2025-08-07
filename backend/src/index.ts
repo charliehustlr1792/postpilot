@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import prisma from './lib/db'
 import userRoutes from './routes/userRoutes';
 import socialAccountRoutes from './routes/socialAccountsRoutes';
+import postRoutes from './routes/postRoutes';
 import { clerkClient,clerkMiddleware,requireAuth,getAuth } from '@clerk/express';
 
 dotenv.config();
@@ -16,6 +17,7 @@ app.get('/', (req, res) => {
 });
 app.use('/api',userRoutes);
 app.use('/api', socialAccountRoutes);
+app.use('/api', postRoutes);
 
 // Use requireAuth() to protect this route
 // If user isn't authenticated, requireAuth() will redirect back to the homepage

@@ -1,0 +1,13 @@
+export enum PostStatus {
+  DRAFT = "DRAFT",
+  SCHEDULED = "SCHEDULED",
+  PUBLISHED = "PUBLISHED",
+  FAILED = "FAILED",
+}
+
+export enum Platform {
+  TWITTER = "TWITTER",
+  LINKEDIN = "LINKEDIN",
+  INSTAGRAM = "INSTAGRAM",
+  FACEBOOK = "FACEBOOK",
+}
