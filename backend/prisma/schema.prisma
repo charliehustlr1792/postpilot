@@ -31,15 +31,25 @@ model User {
 }
 
 model SocialAccount {
-  id          String   @id @default(cuid())
-  platform    Platform
-  username    String
-  accessToken String
+  id           String   @id @default(cuid())
+  platform     Platform
+  username     String
+  displayName  String?   
+  profileImage String?  
+  accessToken  String
   refreshToken String?
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  tokenExpiry  DateTime? 
+  isActive     Boolean  @default(true) 
+  createdAt    DateTime @default(now()) 
+  updatedAt    DateTime @updatedAt      
   
-  posts       Post[]
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  posts Post[]
+  
+  // prevents duplicate platform connections per user
+  @@unique([userId, platform])
 }
 
 model Post {
