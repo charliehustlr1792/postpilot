@@ -89,16 +89,36 @@ export const deleteUser =async(req:Request,res:Response)=>{
     }
 }
 
-/* export const getUserStats =async (req:request,res:Response)=>{
+export const getUserStats =async (req:Request,res:Response)=>{
     try{
         const {userId}=getAuth(req);
         if(!userId){
             return res.status(401).json({error:"User not authenticated"})
         }
         const userStats=await prisma.user.findUnique({
-
+            where:{clerkId:userId},
+            include:{
+                _count:{
+                    select:{
+                        posts:true,
+                        accounts:true,
+                    }
+                }
+            }
         })
+        if(!userStats){
+            return res.status(404).json({error:"User stats not found"})
+        }   
+        res.status(200).json({
+            stats:{
+                totalPosts:userStats._count.posts,
+                totalAccounts:userStats._count.accounts,
+                plan:userStats.plan || 'Free',
+                memberSince:userStats.createdAt,
+            }
+        })
+
     }catch(error){
         res.status(500).json({error:"Something went wrong while fetching user stats"})
     }
-} */
+}
