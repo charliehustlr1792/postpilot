@@ -6,7 +6,11 @@ import userRoutes from './routes/userRoutes';
 import socialAccountRoutes from './routes/socialAccountsRoutes';
 import postRoutes from './routes/postRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
+import scheduleRoutes from './routes/scheduleRoutes'
+import {postPublishQueue} from './lib/queue'
+import {processPostPublish} from './jobs/postPublishProcessor'
 import { clerkClient,clerkMiddleware,requireAuth,getAuth } from '@clerk/express';
+import './workers'
 
 dotenv.config();
 const app = express();
@@ -20,6 +24,7 @@ app.use('/api',userRoutes);
 app.use('/api', socialAccountRoutes);
 app.use('/api', postRoutes);
 app.use('/api', analyticsRoutes);
+app.use('/api',scheduleRoutes);
 
 // Use requireAuth() to protect this route
 // If user isn't authenticated, requireAuth() will redirect back to the homepage
@@ -36,6 +41,13 @@ app.get('/protected', requireAuth(), async (req, res) => {
 
   return res.json({ user })
 })
+
+
+process.on('SIGTERM', async () => {
+  console.log('Shutting down workers...');
+  // Workers will be cleaned up automatically
+  process.exit(0);
+});
 
 
 //test route to check if database is working or not

@@ -60,6 +60,7 @@ model Post {
   publishedAt DateTime?
   status      PostStatus @default(DRAFT)
   platform    Platform
+  //platformPostId String
   
   userId      String
   user        User       @relation(fields: [userId], references: [id])
@@ -90,6 +91,30 @@ model Analytics {
   
   recordedAt  DateTime @default(now())
   createdAt   DateTime @default(now())
+}
+
+model ScheduledJob {
+  id          String    @id @default(cuid())
+  postId      String
+  jobId       String    @unique // Bull queue job ID
+  status      JobStatus @default(PENDING)
+  scheduledFor DateTime
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  error       String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("scheduled_jobs")
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
 }
 
 enum Platform {

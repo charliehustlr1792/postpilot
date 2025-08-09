@@ -7,7 +7,7 @@ const connection=new IORedis(process.env.REDIS_URL || 'redis://localhost:6379',{
 })
 
 //create job queues
-export const postPublicQueue=new Queue('post-publish',{
+export const postPublishQueue=new Queue('post-publish',{
     connection,
     defaultJobOptions:{
         removeOnComplete:50,
