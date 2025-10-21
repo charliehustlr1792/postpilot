@@ -1,48 +1,39 @@
-Step 23: Job Scheduling System (2-3 hours)
+# 🚀 PostPilot
 
-Background job processing with Bull Queue
-Redis setup for job management
-Schedule posts for publishing
-Retry failed publications
+> **Your Social Media Co-Pilot** — create, schedule, and publish content across platforms with AI-powered insights and automated scheduling.
 
-Step 24: Publishing System (2-3 hours)
+---
 
-Social media API integrations (Twitter, Instagram, LinkedIn)
-OAuth flow for account connections
-Actual post publishing to platforms
-Handle API rate limits & errors
+## ✨ Overview
 
-Step 25: File Upload System (1-2 hours)
+**PostPilot** helps creators, brands, and teams manage their entire social media workflow — from ideation to analytics — in one place.
 
-Image upload with Multer
-Cloudinary integration for storage
-Image optimization & resizing
-Handle multiple images per post
+🧠 **AI-powered post ideas** to spark creativity  
+🕒 **Smart scheduling engine** powered by [BullMQ](https://docs.bullmq.io/)  
+📈 **Performance tracking** to measure engagement  
+🔗 **Cross-platform publishing** with seamless integrations  
 
-Step 26: Middleware & Validation (1-2 hours)
+---
 
-Request validation with Zod
-Rate limiting
-Error handling middleware
-Logging system
+## 🛠️ Tech Stack
 
-Step 27: Subscription/Billing (2-3 hours)
+| Layer | Technologies |
+|--------|--------------|
+| **Frontend** | [Next.js](https://nextjs.org/) • [TypeScript](https://www.typescriptlang.org/) • [Tailwind CSS](https://tailwindcss.com/) |
+| **Backend** | [Express.js](https://expressjs.com/) • [BullMQ](https://docs.bullmq.io/) • [PostgreSQL](https://www.postgresql.org/) • [Prisma ORM](https://www.prisma.io/) |
+| **Auth** | [Clerk](https://clerk.dev/) |
+| **Deployment** | Vercel / Render |
+| **AI Layer (upcoming)** | OpenAI / Gemini APIs |
 
-Stripe integration for payments
-Plan-based feature restrictions
-Usage tracking & limits
-Webhook handling
+---
 
-Step 28: Background Services (2-3 hours)
+## ⚙️ Features
 
-Automated analytics fetching from social APIs
-Token refresh handling
-Scheduled data sync jobs
-Health checks & monitoring
+- ✍️ **Content Creation:** Generate engaging post drafts with AI  
+- 📆 **Automated Scheduling:** Queue and execute posts using BullMQ workers  
+- 🔗 **Multi-Platform Publishing:** Manage all your social accounts from one place  
+- 📊 **Analytics Dashboard:** Get insights on post performance and reach  
+- 🧩 **User Management:** Secure authentication and easy onboarding  
 
-Step 29: Testing & Deployment (2-3 hours)
+---
 
-API testing setup
-Environment configuration
-Production deployment
-Database migrations
