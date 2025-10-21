@@ -7,8 +7,8 @@ const links = [
     title: "Pricing"
   },
   {
-    href: "/template",
-    title: "Template"
+    href: "/templates",
+    title: "Templates"
   },
   {
     href: "/dashboard",
@@ -22,12 +22,16 @@ const links = [
 
 const Navbar = () => {
   return (
-    <div className='inline-flex justify-center items-center gap-[30px] relative w-[369px] h-[46px] px-[28px] py-[15px] shrink-1 rounded-full bg-white shadow-[0_0_0_1px_#EAE7E4]'>
-      {links.map((link, index) => (
-        <Link href={link.href} key={index} className="text-[#4D4946] font-inter text-sm font-[460] leading-[18px] hover:text-neutral-500 transition duration-200">
-          {link.title}
-        </Link>
-      ))}
+    <div className='inline-flex h-[46px] px-[28px] py-[15px] flex-col justify-center items-center gap-[10px] rounded-full bg-white shadow-[0_0_0_1px_#EAE7E4] w-[369px]'>
+      <div className='flex justify-center items-center gap-[30px] w-full'>
+        {links.map((link, index) => (
+          <Link href={link.href} key={index} className="flex items-center gap-1">
+            <span className="text-[#4D4946] text-sm font-[460] leading-[18px] hover:text-[#FF6E00] transition" style={{fontFamily: 'Inter, -apple-system, Roboto, Helvetica, sans-serif'}}>
+              {link.title}
+            </span>
+          </Link>
+        ))}
+      </div>
     </div>
   )
 }
