@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: "PostPilot",
   description: "Social media scheduler with AI magic",
   icons:{
-    icon: '/assets/favicon.png',
+    icon: '/assets/favicon.webp',
   }
 };
 
