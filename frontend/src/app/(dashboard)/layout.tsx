@@ -1,8 +1,8 @@
-import LoginButton from '@/components/LoginButton'
 import Logo from '@/components/Logo'
 import Navbar from '@/components/Navbar'
 import MobileSidebar from '@/components/MobileSidebar'
 import React from 'react'
+import Button from '@/components/ui/Button'
 
 const layout = ({children}:{children:React.ReactNode}) => {
   return (
@@ -13,7 +13,7 @@ const layout = ({children}:{children:React.ReactNode}) => {
           <Navbar/>
         </div>
         <div className="flex items-center gap-4">
-          <LoginButton/>
+          <Button text='Log In' className='w-[81px] h-9'/>
           <MobileSidebar/>
         </div>
       </div>
