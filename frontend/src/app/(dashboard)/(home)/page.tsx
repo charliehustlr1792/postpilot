@@ -1,3 +1,4 @@
+import Pricing from '@/components/Pricing'
 import Button from '@/components/ui/Button'
 import Image from 'next/image'
 import React from 'react'
@@ -68,15 +69,11 @@ const HomePage = () => {
 
             <div className="flex flex-col items-center gap-5 w-full">
               <h1
-                className="w-full text-[#181817] text-center text-[82px] md:text-[64px] sm:text-[48px] font-bold leading-[86px] md:leading-[68px] sm:leading-[52px]"
-                style={{ fontFamily: 'Helvetica Neue, -apple-system, Roboto, Helvetica, sans-serif' }}
-              >
+                className="w-full text-[#181817] text-center text-[82px] md:text-[64px] sm:text-[48px] font-bold leading-[86px] md:leading-[68px] sm:leading-[52px]">
                 Your Social Media,<br />On Autopilot
               </h1>
               <p
-                className="w-[518px] max-w-full text-[#4D4946] text-center text-xl leading-7"
-                style={{ fontFamily: 'Helvetica Neue, -apple-system, Roboto, Helvetica, sans-serif' }}
-              >
+                className="w-[518px] max-w-full text-[#4D4946] text-center text-xl leading-7">
                 Schedule smarter, post faster, and grow effortlessly<br />with PostPilot, your AI-powered social media copilot.
               </p>
             </div>
@@ -91,7 +88,6 @@ const HomePage = () => {
         <div className='flex flex-col items-center gap-10 w-[1028px] max-w-full mt-[231px] mb-20'>
           <p
             className='w-full text-[#4D4946] text-center text-xl leading-[18px]'
-            style={{ fontFamily: 'Helvetica Neue, -apple-system, Roboto, Helvetica, sans-serif' }}
           >
             One Platform for Every Platform
           </p>
@@ -122,6 +118,11 @@ const HomePage = () => {
       </div>
 
       {/*Pricing*/}
+      <div className='flex flex-col items-center gap-[10px] w-full mt-[78px] text-center'>
+        <Button text="Pricing" className='w-[100px] h-[42px] py-[10px] px-[26px] text-xl font-[520] leading-8 mt-[34px]' />
+        <h1 className='text-[#181817] text-3xl leading-10 font-bold mt-5 '>Always free.Go<br />unlimited anytime</h1>
+        <Pricing />
+      </div>
 
     </div>
   )
