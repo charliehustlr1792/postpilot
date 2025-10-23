@@ -120,7 +120,12 @@ const HomePage = () => {
       {/*Pricing*/}
       <div className='flex flex-col items-center gap-[10px] w-full mt-[78px] text-center'>
         <Button text="Pricing" className='w-[100px] h-[42px] py-[10px] px-[26px] text-xl font-[520] leading-8 mt-[34px]' />
-        <h1 className='text-[#181817] text-3xl leading-10 font-bold mt-5 '>Always free.Go<br />unlimited anytime</h1>
+        <h1 className='text-[#181817] text-4xl md:text-5xl leading-tight font-bold mt-5 tracking-tight'>
+          Always <span className='text-[#FF6E00] relative inline-block'>
+            free
+          </span><br />
+          Go unlimited anytime
+        </h1>
         <Pricing />
       </div>
 

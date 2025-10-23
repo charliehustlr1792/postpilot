@@ -3,7 +3,7 @@ import PricingCard from './ui/PricingCard'
 const pricingplans=[
     {
         title:"Basic",
-        price:"$9.99/mo",
+        price:"Free",
         features:[
             "Feature 1",
             "Feature 2",
@@ -11,7 +11,7 @@ const pricingplans=[
         ]
     },{
         title:"Pro",    
-        price:"$19.99/mo",
+        price:"$29.99/mo",
         features:[
             "Feature 1",
             "Feature 2",
