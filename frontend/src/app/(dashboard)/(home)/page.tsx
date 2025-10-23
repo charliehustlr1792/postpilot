@@ -1,3 +1,4 @@
+import Footer from '@/components/Footer'
 import Pricing from '@/components/Pricing'
 import Button from '@/components/ui/Button'
 import Image from 'next/image'
@@ -5,6 +6,7 @@ import React from 'react'
 
 const HomePage = () => {
   return (
+    <>
     <div className='relative w-full min-h-screen bg-[#F3EFEC] overflow-hidden pt-[90px]'>
       <div
         className="absolute -left-[400px] top-[221px] w-[542px] h-[758px] inline-flex flex-col items-center rounded-[18px] border border-[#FFD4B2] bg-[#F3EFEC] overflow-hidden"
@@ -128,8 +130,9 @@ const HomePage = () => {
         </h1>
         <Pricing />
       </div>
-
     </div>
+    <Footer/>
+    </>
   )
 }
 

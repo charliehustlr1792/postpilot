@@ -20,7 +20,7 @@ const PricingCard = ({ title, price, features }: PricingPlan) => {
             <Separator className='my-6 bg-gray-200' />
             {features.map((feature, index) => (
                 <div key={index} className='flex items-center gap-6 mb-8'>
-                    <Check className='w-4 h-4 bg-black' />
+                    <Check className='w-4 h-4 bg-gray-800' />
                     <p className='text-gray-700 text-sm whitespace-nowrap'>{feature}</p>
                 </div>
             ))}
