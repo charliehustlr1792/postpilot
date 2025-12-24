@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const express_2 = require("@clerk/express");
+const analyticsController_1 = require("../controllers/analyticsController");
+const router = (0, express_1.Router)();
+router.get('/analytics/overview', (0, express_2.requireAuth)(), analyticsController_1.getAnalyticsOverview);
+router.get('/analytics/trends', (0, express_2.requireAuth)(), analyticsController_1.getAnalyticsTrends);
+router.get('/posts/:postId/analytics', (0, express_2.requireAuth)(), analyticsController_1.getPostAnalytics);
+router.post('/posts/:postId/analytics', (0, express_2.requireAuth)(), analyticsController_1.recordAnalytics);
+exports.default = router;

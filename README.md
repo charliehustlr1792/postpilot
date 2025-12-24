@@ -36,4 +36,7 @@
 - 🧩 **User Management:** Secure authentication and easy onboarding  
 
 ---
-
+Tasks:
+Landing page frontend
+Clerk setup(frontend done development mode not tested yet, need custom credentials and production mode)
+Dashboard frontend

@@ -1,9 +1,14 @@
-import React from 'react'
+import React from 'react';
 
-const page = () => {
+const AccountsPage = () => {
   return (
-    <div>page</div>
-  )
-}
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Social Accounts</h1>
+        <p className="text-gray-600">Manage your connected social media accounts</p>
+      </div>
+    </div>
+  );
+};
 
-export default page
+export default AccountsPage;

@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const express_2 = require("@clerk/express");
+const socialAccountsController_1 = require("../controllers/socialAccountsController");
+const router = (0, express_1.Router)();
+router.get('/accounts', (0, express_2.requireAuth)(), socialAccountsController_1.getSocialAccounts);
+router.post('/accounts/connect', (0, express_2.requireAuth)(), socialAccountsController_1.connectAccount);
+router.delete('/accounts/:accountId', (0, express_2.requireAuth)(), socialAccountsController_1.deleteAccount);
+exports.default = router;

@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const express_2 = require("@clerk/express");
+const postController_1 = require("../controllers/postController");
+const router = (0, express_1.Router)();
+router.get('/posts', (0, express_2.requireAuth)(), postController_1.getAllPosts);
+router.post('/posts', (0, express_2.requireAuth)(), postController_1.createPost);
+router.patch('/posts/:postId', (0, express_2.requireAuth)(), postController_1.updatePost);
+router.delete('/posts/:postId', (0, express_2.requireAuth)(), postController_1.deletePost);
+router.get('/posts/:postId', (0, express_2.requireAuth)(), postController_1.getPost);
+router.post('/posts/:postId/duplicate', (0, express_2.requireAuth)(), postController_1.duplicatePost);
+exports.default = router;

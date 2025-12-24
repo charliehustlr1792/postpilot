@@ -2,7 +2,7 @@ import Footer from '@/components/Footer'
 import Pricing from '@/components/Pricing'
 import Reason from '@/components/Reason'
 import Button from '@/components/ui/Button'
-import Image from 'next/image'
+import Link from 'next/link'
 import React from 'react'
 
 const HomePage = () => {
@@ -83,10 +83,12 @@ const HomePage = () => {
           </div>
         </div>
 
-        <Button
-          text="Get Started"
-          className="w-[163px] h-[52px] py-[10px] px-[26px] text-xl font-[520] leading-8 mt-[34px]"
-        />
+        <Link href="/sign-up">
+          <Button
+            text="Get Started"
+            className="w-[163px] h-[52px] py-[10px] px-[26px] text-xl font-[520] leading-8 mt-[34px]"
+          />
+        </Link>
 
         <div className='flex flex-col items-center gap-10 w-[1028px] max-w-full mt-[231px] mb-20'>
           <p

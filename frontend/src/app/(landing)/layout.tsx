@@ -3,6 +3,7 @@ import Navbar from '@/components/Navbar'
 import MobileSidebar from '@/components/MobileSidebar'
 import React from 'react'
 import Button from '@/components/ui/Button'
+import Link from 'next/link'
 
 const layout = ({children}:{children:React.ReactNode}) => {
   return (
@@ -13,7 +14,9 @@ const layout = ({children}:{children:React.ReactNode}) => {
           <Navbar/>
         </div>
         <div className="flex items-center gap-4">
-          <Button text='Log In' className='w-[81px] h-9'/>
+          <Link href="/sign-in">
+            <Button text='Log In' className='w-[81px] h-9'/>
+          </Link>
           <MobileSidebar/>
         </div>
       </div>
