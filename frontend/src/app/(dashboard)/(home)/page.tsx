@@ -1,5 +1,6 @@
 import Footer from '@/components/Footer'
 import Pricing from '@/components/Pricing'
+import Reason from '@/components/Reason'
 import Button from '@/components/ui/Button'
 import Image from 'next/image'
 import React from 'react'
@@ -117,6 +118,12 @@ const HomePage = () => {
 
           </div>
         </div>
+      </div>
+
+      {/*Why Choose Us*/}
+      <div className='flex flex-col items-center gap-[10px] w-full mt-[78px] text-center'>
+        <Button text="Why Choose Us?" className='w-[200px] h-[42px] py-[10px] px-[26px] text-xl font-[520] leading-8 mt-[34px] mx-auto' />
+        <Reason />
       </div>
 
       {/*Pricing*/}
