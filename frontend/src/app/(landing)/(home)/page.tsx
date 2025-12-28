@@ -3,7 +3,9 @@ import Pricing from '@/components/Pricing'
 import Reason from '@/components/Reason'
 import AnalyticsCard from '@/components/marketing/AnalyticsCard'
 import CalendarCard from '@/components/marketing/CalendarCard'
+import MultiPlatformCard from '@/components/marketing/PlatformsCard'
 import CreatePostCard from '@/components/marketing/PostFeatureCard'
+import TeamCollaborationCard from '@/components/marketing/TeamsCard'
 import Button from '@/components/ui/Button'
 import Link from 'next/link'
 import React from 'react'
@@ -127,6 +129,21 @@ const HomePage = () => {
 
         {/* Features */}
         <div className='flex flex-col items-center gap-[10px] w-full mt-[78px]'>
+
+          <div className="flex items-center justify-center w-[1028px] max-w-full gap-8 mb-16">
+            <div className="flex-shrink-0">
+              <MultiPlatformCard />
+            </div>
+            <div className="flex-1 text-left">
+              <h2 className="text-[#181817] text-4xl font-bold leading-tight mb-4">
+                Post to All Platforms at Once
+              </h2>
+              <p className="text-[#4D4946] text-xl leading-7">
+                Reach your entire audience with a single click. PostPilot automatically formats and publishes your content across Twitter, Instagram, LinkedIn, and Facebook simultaneously.
+              </p>
+            </div>
+          </div>
+
           <div className="flex items-center justify-center w-[1028px] max-w-full gap-8">
             <div className="flex-1 text-left">
               <h2 className="text-[#181817] text-4xl font-bold leading-tight mb-4">
@@ -166,6 +183,20 @@ const HomePage = () => {
             </div>
             <div className="flex-shrink-0">
               <CreatePostCard />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center w-[1028px] max-w-full gap-8 mt-16">
+            <div className="flex-shrink-0">
+              <TeamCollaborationCard />
+            </div>
+            <div className="flex-1 text-left">
+              <h2 className="text-[#181817] text-4xl font-bold leading-tight mb-4">
+                Collaborate Seamlessly
+              </h2>
+              <p className="text-[#4D4946] text-xl leading-7">
+                Work together with your team in real-time. Assign tasks, approve content, and stay in sync across all your social media campaigns with PostPilot's powerful collaboration tools.
+              </p>
             </div>
           </div>
         </div>
