@@ -11,8 +11,8 @@ const links = [
     title: "Pricing"
   },
   {
-    href: "/dashboard",
-    title: "Resources"
+    href: "/testimonials",
+    title: "Testimonials"
   },
   {
     href: "/docs",

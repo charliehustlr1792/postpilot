@@ -7,6 +7,7 @@ import FAQSection from '@/components/marketing/FAQ'
 import MultiPlatformCard from '@/components/marketing/PlatformsCard'
 import CreatePostCard from '@/components/marketing/PostFeatureCard'
 import TeamCollaborationCard from '@/components/marketing/TeamsCard'
+import PostPilotTestimonials from '@/components/marketing/Testimonials'
 import Button from '@/components/ui/Button'
 import Link from 'next/link'
 import React from 'react'
@@ -221,7 +222,7 @@ const HomePage = () => {
           <Pricing />
         </div>
       </div>
-
+      <PostPilotTestimonials/>
       <FAQSection/>
       <Footer />
     </>
