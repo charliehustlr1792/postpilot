@@ -3,6 +3,7 @@ import Pricing from '@/components/Pricing'
 import Reason from '@/components/Reason'
 import AnalyticsCard from '@/components/marketing/AnalyticsCard'
 import CalendarCard from '@/components/marketing/CalendarCard'
+import FAQSection from '@/components/marketing/FAQ'
 import MultiPlatformCard from '@/components/marketing/PlatformsCard'
 import CreatePostCard from '@/components/marketing/PostFeatureCard'
 import TeamCollaborationCard from '@/components/marketing/TeamsCard'
@@ -220,6 +221,8 @@ const HomePage = () => {
           <Pricing />
         </div>
       </div>
+
+      <FAQSection/>
       <Footer />
     </>
   )
