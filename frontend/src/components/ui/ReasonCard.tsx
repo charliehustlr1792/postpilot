@@ -14,7 +14,7 @@ const ReasonCard = ({ title, reasons, isHighlighted, useCross = false }: ReasonC
     const iconColor = useCross ? 'text-red-500' : 'text-green-500'
 
     return (
-        <div className={`min-w-[350px] min-h-[400px] flex flex-col rounded-[18px] p-6 ${isHighlighted ? 'bg-[#FF9B4F] shadow-lg hover:shadow-xl hover:-translate-y-2 transition-all duration-300' : 'bg-gray-200 shadow-sm'} `}
+        <div className={`w-full max-w-[400px] mx-auto min-h-[400px] flex flex-col rounded-[18px] p-6 ${isHighlighted ? 'bg-[#FF9B4F] shadow-lg hover:shadow-xl hover:-translate-y-2 transition-all duration-300' : 'bg-gray-200 shadow-sm'} `}
             style={isHighlighted ? {
                 boxShadow: '0 10px 30px rgba(255, 155, 79, 0.3), 0 1px 0 0 #FFA76A inset'
             } : {}}>
