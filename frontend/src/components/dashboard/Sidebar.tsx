@@ -9,10 +9,10 @@ import Logo from '../Logo';
 
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: Home, href: '/dashboard' },
-  { id: 'posts', label: 'Posts', icon: FileText, href: '/dashboard/posts' },
-  { id: 'calendar', label: 'Calendar', icon: Calendar, href: '/dashboard/calendar' },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3, href: '/dashboard/analytics' },
-  { id: 'settings', label: 'Settings', icon: Settings, href: '/dashboard/settings' },
+  { id: 'posts', label: 'Posts', icon: FileText, href: '/posts' },
+  { id: 'calendar', label: 'Calendar', icon: Calendar, href: '/calendar' },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3, href: '/analytics' },
+  { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
 ];
 
 const Sidebar = () => {

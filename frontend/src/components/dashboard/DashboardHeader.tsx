@@ -19,14 +19,14 @@ const DashboardHeader = () => {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-[#EAE7E4] px-6 flex items-center justify-between sticky top-0 z-30">
-      {/* Welcome Message */}
-      <div className="flex items-center gap-3">
-        <div>
-          <h1 className="text-[#181817] text-lg font-semibold" style={{ fontFamily: 'Inter, -apple-system, Roboto, Helvetica, sans-serif' }}>
-            {getGreeting()}, {user?.firstName || 'there'}! 👋
+    <header className="h-16 bg-[#FF6E00] bg-[linear-gradient(180deg,rgba(255,255,255,0.16)_0%,rgba(255,255,255,0.16)_100%)] shadow-[0_1px_0_0_#FFA76A_inset,0_1px_2px_-1px_#A84D09,0_0_0_1px_#F46F0B] sm:shadow-[0_1px_0_0_#FFA76A_inset,0_1px_3px_-1px_#A84D09,0_0_0_1px_#F46F0B]  px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 backdrop-blur-[2px]">
+
+      <div className="flex items-center gap-3 min-w-0 ml-12 md:ml-2">
+        <div className="min-w-0">
+          <h1 className="text-white text-base sm:text-lg font-semibold truncate">
+            {getGreeting()}, {user?.firstName || 'there'}!!
           </h1>
-          <p className="text-[#4D4946] text-sm">
+          <p className="text-gray-200 text-xs sm:text-sm truncate hidden sm:block">
             Ready to create amazing content today?
           </p>
         </div>
