@@ -201,7 +201,7 @@ const HomePage = () => {
                 Collaborate Seamlessly
               </h2>
               <p className="text-[#4D4946] text-base sm:text-lg md:text-xl leading-6 sm:leading-7">
-                Work together with your team in real-time. Assign tasks, approve content, and stay in sync across all your social media campaigns with PostPilot's powerful collaboration tools.
+                Work together with your team in real-time. Assign tasks, approve content, and stay in sync across all your social media campaigns with PostPilot&apos;s powerful collaboration tools.
               </p>
             </div>
           </div>

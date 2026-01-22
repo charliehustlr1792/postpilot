@@ -1,9 +1,8 @@
-// app/(dashboard)/analytics/page.tsx
 'use client';
 
 import React, { useState } from 'react';
-import { Eye, Heart, Share2, MessageCircle, TrendingUp, TrendingDown, Download, Calendar, ArrowUpRight } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { Eye, Heart, Share2, TrendingUp, TrendingDown, Download, ArrowUpRight } from 'lucide-react';
+import {  PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { PLATFORM_COLORS} from '@/lib/constants';
 import { formatNumber } from '@/lib/utils';
 

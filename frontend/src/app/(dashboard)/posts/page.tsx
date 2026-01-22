@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Search, Filter, Grid3x3, List, MoreVertical } from 'lucide-react';
+import { Plus, Search, Grid3x3, List } from 'lucide-react';
 import PostCard from '@/components/dashboard/PostCard';
 import CreatePostModal from '@/components/posts/CreatePostModal';
 //import PostFilters from '@/components/posts/PostFilters';
@@ -13,7 +13,7 @@ const PostsPage = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<PostStatus | 'all'>('all');
-  const [showFilters, setShowFilters] = useState(false);
+  //const [showFilters, setShowFilters] = useState(false);
 
   // Mock posts data - replace with real API data
   const mockPosts: Post[] = [

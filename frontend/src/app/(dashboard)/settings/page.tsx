@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { User, Bell, Lock, CreditCard, Users, Smartphone, Mail, Globe, Shield, Trash2, Plus, Check, X, Edit3 } from 'lucide-react';
+import { User, Bell, Lock, CreditCard, Users, Smartphone, Shield, Trash2, Plus } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { PLATFORM_COLORS} from '@/lib/constants';
 

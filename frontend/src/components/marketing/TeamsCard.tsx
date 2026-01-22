@@ -1,9 +1,9 @@
 'use client'
 import React, { useState } from 'react';
-import { Users, MessageSquare, CheckCircle2, Clock, Zap, ArrowRight } from 'lucide-react';
+import { Users, MessageSquare, CheckCircle2, Clock, Zap} from 'lucide-react';
 
 const TeamCollaborationCard = () => {
-  const [hoveredMember, setHoveredMember] = useState(null);
+  const [hoveredMember, setHoveredMember] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState('activity');
 
   const teamMembers = [

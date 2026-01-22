@@ -1,8 +1,7 @@
-// app/(dashboard)/dashboard/page.tsx
 'use client';
 
 import React from 'react';
-import { FileText, Eye, Heart, Clock, Plus, TrendingUp } from 'lucide-react';
+import { FileText, Eye, Heart, Clock, TrendingUp } from 'lucide-react';
 import StatCard from '@/components/dashboard/StatCard';
 import QuickActions from '@/components/dashboard/QuickActions';
 import RecentActivity from '@/components/dashboard/RecentActivity';

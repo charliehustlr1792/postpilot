@@ -123,7 +123,7 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ onClose }
             <Bell className="w-12 h-12 text-[#4D4946]/30 mx-auto mb-3" />
             <p className="text-[#4D4946] text-sm">No notifications yet</p>
             <p className="text-[#4D4946]/60 text-xs mt-1">
-              We'll notify you when something happens
+              We&apos;ll notify you when something happens
             </p>
           </div>
         ) : (

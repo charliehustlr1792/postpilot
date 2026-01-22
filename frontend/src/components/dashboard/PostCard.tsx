@@ -1,8 +1,7 @@
-// components/dashboard/PostCard.tsx
 'use client';
 
 import React, { useState } from 'react';
-import { Edit3, Trash2, Copy, MoreVertical, Eye, Heart, MessageCircle, Share2, Calendar as CalendarIcon } from 'lucide-react';
+import { Edit3, Trash2, Copy, MoreVertical, Eye, Heart, MessageCircle, Share2 } from 'lucide-react';
 import { Post } from '@/types/post';
 import { PLATFORM_COLORS, POST_STATUS_COLORS } from '@/lib/constants';
 import { formatDateTime, getRelativeTime, formatNumber } from '@/lib/utils';

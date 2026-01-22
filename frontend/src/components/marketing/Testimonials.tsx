@@ -131,7 +131,7 @@ const InfiniteMovingCards: React.FC<InfiniteMovingCardsProps> = ({ items, direct
 
                 {/* Quote */}
                 <p className="text-[#4D4946] text-sm leading-relaxed mb-4 line-clamp-3 group-hover:text-[#181817] transition-colors duration-300">
-                  "{item.quote}"
+                  `&quot;`{item.quote}`&quot;`
                 </p>
 
                 {/* Divider */}

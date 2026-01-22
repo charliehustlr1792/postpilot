@@ -1,7 +1,6 @@
 'use client';
 import React, { useState } from 'react';
 import { Image, Calendar, Send } from 'lucide-react';
-import { InstagramIcon } from 'lucide-react';
 
 const CreatePostCard = () => {
   const [content, setContent] = useState('');

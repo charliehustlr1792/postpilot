@@ -1,7 +1,7 @@
 'use client'
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, Calendar, BarChart3, Users, Zap, Settings, Home } from 'lucide-react';
+import { Menu, X, Calendar, BarChart3, Users, Zap, Home } from 'lucide-react';
 import Logo from './Logo';
 
 const links = [

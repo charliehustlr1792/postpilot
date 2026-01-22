@@ -1,13 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
+import {  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 
 const PerformanceChart = () => {
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
 
-  // Mock data - replace with real data from your API
   const data = {
     '7d': [
       { date: 'Mon', views: 2400, engagement: 400 },
