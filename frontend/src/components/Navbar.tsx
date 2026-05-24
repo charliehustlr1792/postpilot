@@ -22,7 +22,7 @@ const links = [
 
 const Navbar = () => {
   return (
-    <div className='inline-flex h-[46px] px-[28px] py-[15px] flex-col justify-center items-center gap-[10px] rounded-full bg-white shadow-[0_0_0_1px_#EAE7E4] w-[369px]'>
+    <div className='inline-flex h-[46px] px-[20px] py-[10px] flex-col justify-center items-center gap-[10px] rounded-full bg-white shadow-[0_0_0_1px_#EAE7E4] w-[369px]'>
       <div className='flex justify-center items-center gap-[30px] w-full'>
         {links.map((link, index) => (
           <Link href={link.href} key={index} className="flex items-center gap-1">

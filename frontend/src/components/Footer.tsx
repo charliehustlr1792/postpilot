@@ -14,7 +14,7 @@ const Footer = () => {
                 <div className="py-16 sm:py-10 flex flex-col items-start gap-6 border-b border-gray-800">
                         <Logo />
                     <p className='text-left text-sm text-gray-800 font-light max-w-md'>
-                        Automate your web scraping with drag and drop workflows
+                        Schedule smarter, grow effortlessly
                     </p>
                     
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 w-full mt-8">

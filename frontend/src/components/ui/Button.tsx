@@ -32,22 +32,49 @@ export const buttonVariants = ({
   return cn(baseClasses, variantClasses[variant], sizeClasses[size], className)
 }
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+  React.AnchorHTMLAttributes<HTMLAnchorElement> & {
   text?: string
   variant?: "default" | "ghost" | "outline" | "secondary" | "destructive" | "link"
   size?: "default" | "sm" | "lg" | "icon"
   asChild?: boolean
+  href?: string
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ text, className, onClick, children, variant = "default", size = "default", ...props }, ref) => {
+const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonProps>(
+  ({ text, className, onClick, children, variant = "default", size = "default", href, ...props }, ref) => {
     // If it's your custom styled button (has text prop or default variant)
     if (text || (!children && variant === "default")) {
+      if (href) {
+        return (
+          <a
+            ref={ref as React.Ref<HTMLAnchorElement>}
+            href={href}
+            className={cn(
+              "inline-flex px-5 py-[9px] justify-center items-center rounded-full cursor-pointer",
+              "text-white text-sm font-[560] leading-[18px] whitespace-nowrap",
+              "transition-all duration-200 active:scale-95",
+              className
+            )}
+            style={{
+              background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.16) 100%), #FF6E00',
+              boxShadow: '0 1px 0 0 #FFA76A inset, 0 1px 3px -1px #A84D09, 0 0 0 1px #F46F0B',
+              textShadow: '0 0.8px 0.7px #D96F1D'
+            }}
+            {...props}
+          >
+            <span>
+              {text || children}
+            </span>
+          </a>
+        )
+      }
+
       return (
         <button 
-          ref={ref}
+          ref={ref as React.Ref<HTMLButtonElement>}
           className={cn(
-            "flex px-5 py-[9px] justify-center items-center rounded-full cursor-pointer",
+            "inline-flex px-5 py-[9px] justify-center items-center rounded-full cursor-pointer",
             "text-white text-sm font-[560] leading-[18px] whitespace-nowrap",
             "transition-all duration-200 active:scale-95",
             className
@@ -66,9 +93,23 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     }
     
     // For other variants (used by shadcn components like calendar)
+    if (href) {
+      return (
+        <a
+          ref={ref as React.Ref<HTMLAnchorElement>}
+          href={href}
+          className={buttonVariants({ variant, size, className })}
+          onClick={onClick}
+          {...props}
+        >
+          {children}
+        </a>
+      )
+    }
+
     return (
       <button
-        ref={ref}
+        ref={ref as React.Ref<HTMLButtonElement>}
         className={buttonVariants({ variant, size, className })}
         onClick={onClick}
         {...props}
