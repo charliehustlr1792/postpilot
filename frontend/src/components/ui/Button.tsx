@@ -32,14 +32,24 @@ export const buttonVariants = ({
   return cn(baseClasses, variantClasses[variant], sizeClasses[size], className)
 }
 
-type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
-  React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+type ButtonCommonProps = {
   text?: string
   variant?: "default" | "ghost" | "outline" | "secondary" | "destructive" | "link"
   size?: "default" | "sm" | "lg" | "icon"
   asChild?: boolean
-  href?: string
 }
+
+type AnchorButtonProps = React.AnchorHTMLAttributes<HTMLAnchorElement> &
+  ButtonCommonProps & {
+    href: string
+  }
+
+type NativeButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+  ButtonCommonProps & {
+    href?: undefined
+  }
+
+type ButtonProps = AnchorButtonProps | NativeButtonProps
 
 const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonProps>(
   ({ text, className, onClick, children, variant = "default", size = "default", href, ...props }, ref) => {
