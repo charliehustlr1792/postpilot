@@ -71,7 +71,7 @@ const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonPro
               boxShadow: '0 1px 0 0 #FFA76A inset, 0 1px 3px -1px #A84D09, 0 0 0 1px #F46F0B',
               textShadow: '0 0.8px 0.7px #D96F1D'
             }}
-            {...props}
+            {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
           >
             <span>
               {text || children}
@@ -94,8 +94,8 @@ const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonPro
             boxShadow: '0 1px 0 0 #FFA76A inset, 0 1px 3px -1px #A84D09, 0 0 0 1px #F46F0B',
             textShadow: '0 0.8px 0.7px #D96F1D'
           }}
-          onClick={onClick}
-          {...props}
+          onClick={onClick as React.MouseEventHandler<HTMLButtonElement>}
+          {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
         >
           {text || children}
         </button>
@@ -109,8 +109,8 @@ const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonPro
           ref={ref as React.Ref<HTMLAnchorElement>}
           href={href}
           className={buttonVariants({ variant, size, className })}
-          onClick={onClick}
-          {...props}
+          onClick={onClick as React.MouseEventHandler<HTMLAnchorElement>}
+          {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
         >
           {children}
         </a>
@@ -121,8 +121,8 @@ const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonPro
       <button
         ref={ref as React.Ref<HTMLButtonElement>}
         className={buttonVariants({ variant, size, className })}
-        onClick={onClick}
-        {...props}
+        onClick={onClick as React.MouseEventHandler<HTMLButtonElement>}
+        {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
       >
         {children}
       </button>

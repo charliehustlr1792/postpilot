@@ -5,14 +5,15 @@ export type Platform = 'TWITTER' | 'INSTAGRAM' | 'LINKEDIN' | 'FACEBOOK';
 export type PostStatus = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'FAILED';
 export type Plan = 'FREE' | 'PRO' | 'ENTERPRISE';
 
-// The account fields included on a Post response (not the full SocialAccount).
+// The account fields included on a target (not the full SocialAccount).
 export interface PostAccount {
+  id: string;
   platform: Platform;
   username: string;
   displayName: string | null;
 }
 
-// Analytics snapshot for a single measurement point.
+// Analytics snapshot for a single target measurement point.
 export interface PostAnalytics {
   id: string;
   impressions: number;
@@ -27,23 +28,36 @@ export interface PostAnalytics {
   recordedAt: string;
 }
 
-// Mirrors the backend DB Post record: one post belongs to one platform + one social account.
+// One delivery of a Post to a single platform/account.
+// Status, scheduling and publish results live here — each platform is independent.
+export interface PostTarget {
+  id: string;
+  platform: Platform;
+  status: PostStatus;
+  scheduledAt: string | null;
+  publishedAt: string | null;
+  platformPostId: string | null;
+  url: string | null;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+  postId: string;
+  accountId: string;
+  account: PostAccount;
+  // Only populated on single-post fetches (GET /api/posts/:id)
+  analytics?: PostAnalytics[];
+}
+
+// The logical post the user authors once. It fans out to one target per platform.
 // Dates are ISO strings as returned by JSON serialisation.
 export interface Post {
   id: string;
   content: string;
   images: string[];
-  platform: Platform;
-  status: PostStatus;
-  scheduledAt: string | null;
-  publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
   userId: string;
-  accountId: string;
-  account: PostAccount;
-  // Only populated on single-post fetches (GET /api/posts/:id)
-  analytics?: PostAnalytics[];
+  targets: PostTarget[];
 }
 
 // Connected social media account.
@@ -71,11 +85,29 @@ export interface User {
 }
 
 // UI-only type for the Create/Edit Post form.
-// Selecting multiple platforms in the form creates one Post record per platform.
+// Selecting multiple platforms creates one Post with one target per chosen account.
 export interface CreatePostFormData {
   content: string;
-  platforms: Platform[];
-  accountIds: string[];
+  socialAccountIds: string[];
   scheduledAt: string | null;
   images: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Derived helpers for working with a post's targets in the UI.
+// ---------------------------------------------------------------------------
+
+// The distinct platforms a post is delivered to.
+export function postPlatforms(post: Post): Platform[] {
+  return Array.from(new Set(post.targets.map((t) => t.platform)));
+}
+
+// A single rolled-up status for a post across all its targets, for list badges.
+// Priority: FAILED > SCHEDULED > PUBLISHED > DRAFT.
+export function postRollupStatus(post: Post): PostStatus {
+  const statuses = new Set(post.targets.map((t) => t.status));
+  if (statuses.has('FAILED')) return 'FAILED';
+  if (statuses.has('SCHEDULED')) return 'SCHEDULED';
+  if (statuses.has('PUBLISHED')) return 'PUBLISHED';
+  return 'DRAFT';
 }

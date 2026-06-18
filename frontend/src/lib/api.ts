@@ -30,7 +30,7 @@ export interface SchedulePostResponse {
   message: string;
   post: Post;
   scheduledAt: string;
-  jobId: string;
+  scheduledTargets: number;
 }
 
 // DELETE /api/posts/:id/schedule  |  POST .../duplicate
@@ -136,7 +136,8 @@ export interface UserStatsResponse {
 export interface CreatePostBody {
   content: string;
   images?: string[];
-  socialAccountId: string;
+  // One target is created per account — this is how a post fans out to many platforms.
+  socialAccountIds: string[];
   scheduledAt?: string;
 }
 
@@ -148,6 +149,13 @@ export interface UpdatePostBody {
 
 export interface SchedulePostBody {
   scheduledAt: string;
+  // Optional: schedule only specific targets; defaults to all non-published targets.
+  targetIds?: string[];
+}
+
+export interface DuplicatePostBody {
+  // Optional: retarget the duplicate to different accounts; defaults to the original's.
+  socialAccountIds?: string[];
 }
 
 export interface ConnectAccountBody {
@@ -262,10 +270,10 @@ export const api = {
     );
   },
 
-  duplicatePost(postId: string, token?: string | null) {
+  duplicatePost(postId: string, body: DuplicatePostBody = {}, token?: string | null) {
     return apiFetch<PostResponse>(
       `/api/posts/${postId}/duplicate`,
-      { method: 'POST' },
+      { method: 'POST', body: JSON.stringify(body) },
       token,
     );
   },

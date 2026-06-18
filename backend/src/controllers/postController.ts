@@ -4,277 +4,296 @@ import { PostStatus, Platform } from "../types/enums";
 import { getAuth } from "@clerk/express";
 import { Prisma } from "../generated/prisma";
 
+// Shared include shape so every Post response carries its targets + account info.
+const postInclude = {
+    targets: {
+        include: {
+            account: {
+                select: {
+                    id: true,
+                    platform: true,
+                    username: true,
+                    displayName: true,
+                },
+            },
+        },
+    },
+} satisfies Prisma.PostInclude;
+
 export const getAllPosts = async (req: Request, res: Response) => {
     try {
         const { userId } = getAuth(req);
         if (!userId) {
-            return res.status(401).json({ error: "User not authenticated" })
+            return res.status(401).json({ error: "User not authenticated" });
         }
         const { status, platform, page = 1, limit = 10 } = req.query;
-        const where: Prisma.PostWhereInput = {
-            user: {
-                clerkId: userId
-            }
-        }
+
+        // Filters apply at the target level: a post matches if it has at least
+        // one target with the requested status / platform.
+        const targetFilter: Prisma.PostTargetWhereInput = {};
         if (typeof status === "string" && status in PostStatus) {
-            where.status = status as PostStatus;
+            targetFilter.status = status as PostStatus;
         }
-
         if (typeof platform === "string" && platform in Platform) {
-            where.platform = platform as Platform;
+            targetFilter.platform = platform as Platform;
         }
 
-        const posts = await prisma.post.findMany({
-            where,
-            include: {
-                account: {
-                    select: {
-                        platform: true,
-                        username: true,
-                        displayName: true
-                    }
-                }
-            }
-        })
-        const total = await prisma.post.count({ where });
+        const where: Prisma.PostWhereInput = {
+            user: { clerkId: userId },
+            ...(Object.keys(targetFilter).length > 0 && { targets: { some: targetFilter } }),
+        };
+
+        const pageNum = Math.max(1, Number(page));
+        const limitNum = Math.max(1, Number(limit));
+
+        const [posts, total] = await Promise.all([
+            prisma.post.findMany({
+                where,
+                include: postInclude,
+                orderBy: { createdAt: "desc" },
+                skip: (pageNum - 1) * limitNum,
+                take: limitNum,
+            }),
+            prisma.post.count({ where }),
+        ]);
+
         res.json({
             posts,
-            page: Number(page),
-            limit: Number(limit),
-            totalPages: Math.ceil(total / Number(limit))
-        })
-
+            page: pageNum,
+            limit: limitNum,
+            totalPages: Math.ceil(total / limitNum),
+        });
     } catch (error) {
-        res.status(500).json({ error: "Something went wrong while fetching posts" })
+        res.status(500).json({ error: "Something went wrong while fetching posts" });
     }
-}
+};
 
 export const createPost = async (req: Request, res: Response) => {
     try {
         const { userId } = getAuth(req);
-        const { content, images, socialAccountId, scheduledAt, mentions } = req.body;
         if (!userId) {
-            return res.status(401).json({ error: "User not authenticated" })
+            return res.status(401).json({ error: "User not authenticated" });
         }
-        if (!content || !socialAccountId) {
-            return res.status(400).json({ error: "Content and socialAccountId" })
-        }
-        const socialAccount = await prisma.socialAccount.findFirst({
-            where: {
-                id: socialAccountId,
-                user: { clerkId: userId }
-            }
-        });
+        const { content, images, socialAccountIds, scheduledAt } = req.body;
 
-        if (!socialAccount) {
-            return res.status(404).json({ error: 'Social account not found' });
+        if (!content || !Array.isArray(socialAccountIds) || socialAccountIds.length === 0) {
+            return res.status(400).json({ error: "content and a non-empty socialAccountIds array are required" });
         }
-        const user = await prisma.user.findUnique({
-            where: { clerkId: userId }
+
+        const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // Verify every account belongs to the authenticated user.
+        const accounts = await prisma.socialAccount.findMany({
+            where: { id: { in: socialAccountIds }, userId: user.id },
         });
+        if (accounts.length !== socialAccountIds.length) {
+            return res.status(404).json({ error: "One or more social accounts not found" });
+        }
+
+        const scheduledDate = scheduledAt ? new Date(scheduledAt) : null;
+        const targetStatus = scheduledDate ? "SCHEDULED" : "DRAFT";
+
         const post = await prisma.post.create({
             data: {
                 content,
                 images: images || [],
-                platform: socialAccount.platform,
-                status: scheduledAt ? 'SCHEDULED' : 'DRAFT',
-                scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-                userId: user!.id,
-                accountId: socialAccountId
+                userId: user.id,
+                targets: {
+                    create: accounts.map((account) => ({
+                        platform: account.platform,
+                        accountId: account.id,
+                        status: targetStatus,
+                        scheduledAt: scheduledDate,
+                    })),
+                },
+            },
+            include: postInclude,
+        });
+
+        res.status(201).json({ post });
+    } catch (error) {
+        res.status(500).json({ error: "Something went wrong while creating post" });
+    }
+};
+
+export const getPost = async (req: Request, res: Response) => {
+    try {
+        const { userId } = getAuth(req);
+        const { postId } = req.params;
+
+        if (!userId) {
+            return res.status(401).json({ error: "Not authenticated" });
+        }
+
+        const post = await prisma.post.findFirst({
+            where: {
+                id: postId,
+                user: { clerkId: userId },
             },
             include: {
-                account: {
-                    select: {
-                        platform: true,
-                        username: true,
-                        displayName: true
+                targets: {
+                    include: {
+                        account: {
+                            select: { id: true, platform: true, username: true, displayName: true },
+                        },
+                        analytics: {
+                            orderBy: { recordedAt: "desc" },
+                            take: 1,
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!post) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        res.json({ post });
+    } catch (error) {
+        res.status(500).json({ error: "Something went wrong while fetching post" });
+    }
+};
+
+export const updatePost = async (req: Request, res: Response) => {
+    try {
+        const { userId } = getAuth(req);
+        const { postId } = req.params;
+        const { content, images, scheduledAt } = req.body;
+
+        if (!userId) {
+            return res.status(401).json({ error: "Not authenticated" });
+        }
+
+        const existingPost = await prisma.post.findFirst({
+            where: { id: postId, user: { clerkId: userId } },
+            include: { targets: true },
+        });
+
+        if (!existingPost) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        // Update the shared content on the Post itself.
+        const postData: Prisma.PostUpdateInput = {
+            ...(content && { content }),
+            ...(images && { images }),
+        };
+
+        // Scheduling changes apply to every target that hasn't published yet.
+        // Published targets are immutable.
+        await prisma.$transaction(async (tx) => {
+            await tx.post.update({ where: { id: postId }, data: postData });
+
+            if (scheduledAt !== undefined) {
+                const editableTargetIds = existingPost.targets
+                    .filter((t) => t.status !== "PUBLISHED")
+                    .map((t) => t.id);
+
+                if (editableTargetIds.length > 0) {
+                    if (scheduledAt === null) {
+                        await tx.postTarget.updateMany({
+                            where: { id: { in: editableTargetIds } },
+                            data: { scheduledAt: null, status: "DRAFT" },
+                        });
+                    } else {
+                        await tx.postTarget.updateMany({
+                            where: { id: { in: editableTargetIds } },
+                            data: { scheduledAt: new Date(scheduledAt), status: "SCHEDULED" },
+                        });
                     }
                 }
             }
         });
 
-        res.status(201).json({ post });
+        const post = await prisma.post.findUnique({
+            where: { id: postId },
+            include: postInclude,
+        });
+
+        res.json({ post });
     } catch (error) {
-        res.status(500).json({ error: "Something went wrong while creating post" })
+        res.status(500).json({ error: "Something went wrong while updating post" });
     }
-}
-
-export const getPost = async (req: Request, res: Response) => {
-  try {
-    const { userId } = getAuth(req);
-    const { postId } = req.params;
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    const post = await prisma.post.findFirst({
-      where: {
-        id: postId,
-        user: { clerkId: userId }
-      },
-      include: {
-        account: {
-          select: {
-            platform: true,
-            username: true,
-            displayName: true
-          }
-        },
-        analytics: {
-          orderBy: { recordedAt: 'desc' },
-          take: 1
-        }
-      }
-    });
-
-    if (!post) {
-      return res.status(404).json({ error: 'Post not found' });
-    }
-
-    res.json({ post });
-  } catch (error) {
-    res.status(500).json({ error: "Something went wrong while fetching post" });
-  }
-};
-
-export const updatePost = async (req: Request, res: Response) => {
-  try {
-    const { userId } = getAuth(req);
-    const { postId } = req.params;
-    const { content, images, scheduledAt, mentions } = req.body;
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    // Verify post belongs to user
-    const existingPost = await prisma.post.findFirst({
-      where: {
-        id: postId,
-        user: { clerkId: userId }
-      }
-    });
-
-    if (!existingPost) {
-      return res.status(404).json({ error: 'Post not found' });
-    }
-
-    // Don't allow editing published posts
-    if (existingPost.status === 'PUBLISHED') {
-      return res.status(400).json({ error: 'Cannot edit published posts' });
-    }
-
-    const updateData: any = {
-      ...(content && { content }),
-      ...(images && { images }),
-      //...(mentions && { mentions })
-    };
-
-    if (scheduledAt) {
-      updateData.scheduledAt = new Date(scheduledAt);
-      updateData.status = 'SCHEDULED';
-    } else if (scheduledAt === null) {
-      updateData.scheduledAt = null;
-      updateData.status = 'DRAFT';
-    }
-
-    const post = await prisma.post.update({
-      where: { id: postId },
-      data: updateData,
-      include: {
-        account: {
-          select: {
-            platform: true,
-            username: true,
-            displayName: true
-          }
-        }
-      }
-    });
-
-    res.json({ post });
-  } catch (error) {
-    res.status(500).json({ error: "Something went wrong while updating post" });
-  }
 };
 
 export const deletePost = async (req: Request, res: Response) => {
-  try {
-    const { userId } = getAuth(req);
-    const { postId } = req.params;
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'Not authenticated' });
+    try {
+        const { userId } = getAuth(req);
+        const { postId } = req.params;
+
+        if (!userId) {
+            return res.status(401).json({ error: "Not authenticated" });
+        }
+
+        const post = await prisma.post.findFirst({
+            where: { id: postId, user: { clerkId: userId } },
+        });
+
+        if (!post) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        // Targets (and their analytics) cascade-delete via the schema.
+        await prisma.post.delete({ where: { id: postId } });
+
+        res.json({ message: "Post deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ error: "Something went wrong while deleting post" });
     }
-
-    // Verify post belongs to user
-    const post = await prisma.post.findFirst({
-      where: {
-        id: postId,
-        user: { clerkId: userId }
-      }
-    });
-
-    if (!post) {
-      return res.status(404).json({ error: 'Post not found' });
-    }
-
-    await prisma.post.delete({
-      where: { id: postId }
-    });
-
-    res.json({ message: 'Post deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: "Something went wrong while deleting post" });
-  }
 };
 
-//duplicate post to post to same or different platforms
+// Duplicate a post and all of its targets as a fresh DRAFT.
 export const duplicatePost = async (req: Request, res: Response) => {
-  try {
-    const { userId } = getAuth(req);
-    const { postId } = req.params;
-    const { platform, socialAccountId } = req.body;
+    try {
+        const { userId } = getAuth(req);
+        const { postId } = req.params;
+        const { socialAccountIds } = req.body;
 
-    if (!userId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    const originalPost = await prisma.post.findFirst({
-      where: {
-        id: postId,
-        user: { clerkId: userId }
-      }
-    });
-
-    if (!originalPost) {
-      return res.status(404).json({ error: 'Post not found' });
-    }
-
-    const duplicatedPost = await prisma.post.create({
-      data: {
-        content: originalPost.content,
-        images: originalPost.images,
-        //mentions: originalPost.mentions,
-        platform: platform || originalPost.platform,
-        status: 'DRAFT',
-        userId: originalPost.userId,
-        accountId: socialAccountId || originalPost.accountId
-      },
-      include: {
-        account: {
-          select: {
-            platform: true,
-            username: true,
-            displayName: true
-          }
+        if (!userId) {
+            return res.status(401).json({ error: "Not authenticated" });
         }
-      }
-    });
 
-    res.status(201).json({ post: duplicatedPost });
-  } catch (error) {
-    res.status(500).json({ error: "Something went wrong while duplicating post" });
-  }
+        const originalPost = await prisma.post.findFirst({
+            where: { id: postId, user: { clerkId: userId } },
+            include: { targets: true },
+        });
+
+        if (!originalPost) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        // Optionally retarget the duplicate to a different set of accounts;
+        // otherwise reuse the original post's accounts.
+        let accounts;
+        if (Array.isArray(socialAccountIds) && socialAccountIds.length > 0) {
+            accounts = await prisma.socialAccount.findMany({
+                where: { id: { in: socialAccountIds }, user: { clerkId: userId } },
+            });
+            if (accounts.length !== socialAccountIds.length) {
+                return res.status(404).json({ error: "One or more social accounts not found" });
+            }
+        }
+
+        const targetData = accounts
+            ? accounts.map((a) => ({ platform: a.platform, accountId: a.id, status: "DRAFT" as const }))
+            : originalPost.targets.map((t) => ({ platform: t.platform, accountId: t.accountId, status: "DRAFT" as const }));
+
+        const duplicatedPost = await prisma.post.create({
+            data: {
+                content: originalPost.content,
+                images: originalPost.images,
+                userId: originalPost.userId,
+                targets: { create: targetData },
+            },
+            include: postInclude,
+        });
+
+        res.status(201).json({ post: duplicatedPost });
+    } catch (error) {
+        res.status(500).json({ error: "Something went wrong while duplicating post" });
+    }
 };

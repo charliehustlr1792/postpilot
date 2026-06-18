@@ -1,8 +1,8 @@
 import prisma from '../lib/db';
-import { Post}from '../types/post';
+import { PublishablePost } from '../types/post';
 import { PublishResult } from '../types/publishResult';
 
-export const publishPostToSocialMedia = async (post: Post): Promise<PublishResult> => {
+export const publishPostToSocialMedia = async (post: PublishablePost): Promise<PublishResult> => {
   try {
     console.log(`Publishing to ${post.account.platform}: ${post.content}`);  
     switch (post.account.platform) {
@@ -18,7 +18,7 @@ export const publishPostToSocialMedia = async (post: Post): Promise<PublishResul
   }
 };
 
-const publishToTwitter = async (post: Post): Promise<PublishResult> => {
+const publishToTwitter = async (post: PublishablePost): Promise<PublishResult> => {
   // TODO: Implement actual Twitter API v2 integration
   // For now, simulate the API call
   
@@ -44,7 +44,7 @@ const publishToTwitter = async (post: Post): Promise<PublishResult> => {
 };
 
 // Instagram Publishing
-const publishToInstagram = async (post: Post): Promise<PublishResult> => {
+const publishToInstagram = async (post: PublishablePost): Promise<PublishResult> => {
   // TODO: Implement Instagram Basic Display API / Instagram Graph API
   
   console.log('Publishing to Instagram:', {
@@ -73,7 +73,7 @@ const publishToInstagram = async (post: Post): Promise<PublishResult> => {
 };
 
 // LinkedIn Publishing
-const publishToLinkedIn = async (post: Post): Promise<PublishResult> => {
+const publishToLinkedIn = async (post: PublishablePost): Promise<PublishResult> => {
   // TODO: Implement LinkedIn API integration
   
   console.log('Publishing to LinkedIn:', {
@@ -96,7 +96,7 @@ const publishToLinkedIn = async (post: Post): Promise<PublishResult> => {
 };
 
 // Facebook Publishing
-const publishToFacebook = async (post: Post): Promise<PublishResult> => {
+const publishToFacebook = async (post: PublishablePost): Promise<PublishResult> => {
   // TODO: Implement Facebook Graph API integration
   
   console.log('Publishing to Facebook:', {
@@ -138,7 +138,7 @@ export const refreshAccessToken = async (socialAccountId: string): Promise<strin
 };
 
 // Helper function to validate post content for each platform
-export const validatePostForPlatform = (post: Post): { valid: boolean; errors: string[] } => {
+export const validatePostForPlatform = (post: PublishablePost): { valid: boolean; errors: string[] } => {
   const errors: string[] = [];
 
   switch (post.account.platform) {

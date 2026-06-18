@@ -2,7 +2,7 @@ import { Request, Response } from 'express'
 import { getAuth } from '@clerk/express'
 import prisma from '../lib/db'
 
-//gets analytics for a specific post
+// Gets analytics for all targets of a specific post.
 export const getPostAnalytics = async (req: Request, res: Response) => {
     try {
         const { userId } = getAuth(req)
@@ -11,18 +11,13 @@ export const getPostAnalytics = async (req: Request, res: Response) => {
             return res.status(401).json({ error: 'Unauthorized' })
         }
         const post = await prisma.post.findFirst({
-            where: {
-                id: postId,
-                user: {
-                    clerkId: userId
-                }
-            }
+            where: { id: postId, user: { clerkId: userId } },
         })
         if (!post) {
             return res.status(404).json({ error: 'Post not found' })
         }
         const analytics = await prisma.analytics.findMany({
-            where: { postId },
+            where: { postTarget: { postId } },
             orderBy: { recordedAt: 'desc' },
         })
         res.json({ analytics })
@@ -32,7 +27,7 @@ export const getPostAnalytics = async (req: Request, res: Response) => {
     }
 }
 
-//gets analytics overview for user
+// Gets an aggregated analytics overview for the user.
 export const getAnalyticsOverview = async (req: Request, res: Response) => {
     try {
         const { userId } = getAuth(req);
@@ -43,18 +38,15 @@ export const getAnalyticsOverview = async (req: Request, res: Response) => {
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - Number(days));
 
-        const user = await prisma.user.findUnique({
-            where: { clerkId: userId }
-        })
+        const user = await prisma.user.findUnique({ where: { clerkId: userId } })
         if (!user) {
             return res.status(404).json({ error: 'User not found' })
         }
+
         const totalMetrics = await prisma.analytics.aggregate({
             where: {
                 userId: user.id,
-                recordedAt: {
-                    gte: startDate
-                }
+                recordedAt: { gte: startDate },
             },
             _sum: {
                 impressions: true,
@@ -63,56 +55,42 @@ export const getAnalyticsOverview = async (req: Request, res: Response) => {
                 comments: true,
                 clicks: true,
                 reach: true,
-                saves: true
+                saves: true,
             },
             _avg: {
                 engagementRate: true,
-                ctr: true
-            }
+                ctr: true,
+            },
         })
 
-        const topPosts = await prisma.post.findMany({
+        // Top posts = posts with at least one target published in the window,
+        // ranked by total engagement across their targets' latest analytics.
+        const posts = await prisma.post.findMany({
             where: {
                 userId: user.id,
-                publishedAt: {
-                    gte: startDate
-                }
+                targets: { some: { publishedAt: { gte: startDate } } },
             },
             include: {
-                analytics: {
-                    orderBy: { recordedAt: 'desc' },
-                    take: 1 // Get the latest analytics for each post
-                },
-                account: {
-                    select: {
-                        platform: true,
-                        username: true
-                    }
+                targets: {
+                    include: {
+                        account: { select: { platform: true, username: true } },
+                        analytics: { orderBy: { recordedAt: 'desc' }, take: 1 },
+                    },
                 },
             },
-            take: 10
+            take: 20,
         })
 
-        const topPostsWithEngagement = topPosts.map(post => ({
-            ...post,
-            totalEngagement: post.analytics[0] ? post.analytics[0].likes + post.analytics[0].shares + post.analytics[0].comments : 0,
-        })).sort((a, b) => b.totalEngagement - a.totalEngagement).slice(0, 5)
-
-        const platformStats = await prisma.analytics.groupBy({
-            by: ['postId'],
-            where: {
-                userId: user.id,
-                recordedAt: {
-                    gte: startDate
-                }
-            },
-            _sum: {
-                impressions: true,
-                likes: true,
-                shares: true,
-                comments: true
-            }
-        });
+        const topPosts = posts
+            .map((post) => {
+                const totalEngagement = post.targets.reduce((sum, target) => {
+                    const a = target.analytics[0]
+                    return sum + (a ? a.likes + a.shares + a.comments : 0)
+                }, 0)
+                return { ...post, totalEngagement }
+            })
+            .sort((a, b) => b.totalEngagement - a.totalEngagement)
+            .slice(0, 5)
 
         res.json({
             overview: {
@@ -124,60 +102,47 @@ export const getAnalyticsOverview = async (req: Request, res: Response) => {
                 totalReach: totalMetrics._sum?.reach || 0,
                 totalSaves: totalMetrics._sum?.saves || 0,
                 avgEngagementRate: totalMetrics._avg?.engagementRate || 0,
-                avgCTR: totalMetrics._avg?.ctr || 0
+                avgCTR: totalMetrics._avg?.ctr || 0,
             },
-            topPosts: topPostsWithEngagement,
+            topPosts,
             dateRange: {
                 startDate,
                 endDate: new Date(),
-                days: Number(days)
-            }
+                days: Number(days),
+            },
         });
     } catch (error) {
         res.status(500).json({ error: "something went wrong while fetching overview" })
     }
 }
 
-//record analytics for a post(this would be called by background jobs)
+// Record analytics for a single target (called by background sync jobs).
 export const recordAnalytics = async (req: Request, res: Response) => {
     try {
         const { userId } = getAuth(req);
-        const { postId } = req.params
-        const {
-            impressions,
-            likes,
-            shares,
-            comments,
-            clicks,
-            reach,
-            saves
-        } = req.body;
+        const { targetId } = req.params
+        const { impressions, likes, shares, comments, clicks, reach, saves } = req.body;
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' })
         }
-        const post = await prisma.post.findFirst({
-            where: {
-                id: postId,
-                user: { clerkId: userId }
-            }
+
+        const target = await prisma.postTarget.findFirst({
+            where: { id: targetId, post: { user: { clerkId: userId } } },
+            include: { post: { select: { userId: true } } },
         })
 
-        if (!post) {
-            return res.status(404).json({ error: 'Post not found' })
+        if (!target) {
+            return res.status(404).json({ error: 'Post target not found' })
         }
-        // Calculate engagement rate and CTR
+
         const totalEngagement = (likes || 0) + (comments || 0) + (shares || 0);
         const engagementRate = impressions ? (totalEngagement / impressions) * 100 : 0;
         const ctr = impressions ? ((clicks || 0) / impressions) * 100 : 0;
 
-        const user = await prisma.user.findUnique({
-            where: { clerkId: userId }
-        })
-
         const analytics = await prisma.analytics.create({
             data: {
-                postId,
-                userId: user!.id,
+                postTargetId: target.id,
+                userId: target.post.userId,
                 impressions: impressions || 0,
                 likes: likes || 0,
                 shares: shares || 0,
@@ -186,8 +151,8 @@ export const recordAnalytics = async (req: Request, res: Response) => {
                 reach: reach || 0,
                 saves: saves || 0,
                 engagementRate,
-                ctr
-            }
+                ctr,
+            },
         });
 
         res.status(201).json({ analytics });
@@ -196,7 +161,7 @@ export const recordAnalytics = async (req: Request, res: Response) => {
     }
 }
 
-//get analytics trends (daily/weekl/monthly)
+// Get analytics trends grouped by date.
 export const getAnalyticsTrends = async (req: Request, res: Response) => {
     try {
         const { userId } = getAuth(req);
@@ -206,9 +171,7 @@ export const getAnalyticsTrends = async (req: Request, res: Response) => {
             return res.status(401).json({ error: 'Not authenticated' });
         }
 
-        const user = await prisma.user.findUnique({
-            where: { clerkId: userId }
-        });
+        const user = await prisma.user.findUnique({ where: { clerkId: userId } });
 
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
@@ -217,17 +180,12 @@ export const getAnalyticsTrends = async (req: Request, res: Response) => {
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - Number(days));
 
-        // Get analytics grouped by date
         const trends = await prisma.analytics.findMany({
             where: {
                 userId: user.id,
-                recordedAt: {
-                    gte: startDate
-                }
+                recordedAt: { gte: startDate },
             },
-            orderBy: {
-                recordedAt: 'asc'
-            },
+            orderBy: { recordedAt: 'asc' },
             select: {
                 impressions: true,
                 likes: true,
@@ -237,11 +195,10 @@ export const getAnalyticsTrends = async (req: Request, res: Response) => {
                 reach: true,
                 engagementRate: true,
                 ctr: true,
-                recordedAt: true
-            }
+                recordedAt: true,
+            },
         });
 
-        // Group by date (simplified - you might want more sophisticated grouping)
         const trendData = trends.reduce((acc: any, item) => {
             const date = item.recordedAt.toISOString().split('T')[0];
 
@@ -256,7 +213,7 @@ export const getAnalyticsTrends = async (req: Request, res: Response) => {
                     reach: 0,
                     engagementRate: 0,
                     ctr: 0,
-                    count: 0
+                    count: 0,
                 };
             }
 
@@ -273,7 +230,6 @@ export const getAnalyticsTrends = async (req: Request, res: Response) => {
             return acc;
         }, {});
 
-        // Calculate averages for rates
         Object.values(trendData).forEach((day: any) => {
             day.engagementRate = day.engagementRate / day.count;
             day.ctr = day.ctr / day.count;
@@ -286,11 +242,10 @@ export const getAnalyticsTrends = async (req: Request, res: Response) => {
             dateRange: {
                 startDate,
                 endDate: new Date(),
-                days: Number(days)
-            }
+                days: Number(days),
+            },
         });
     } catch (error) {
         res.status(500).json({ error: "something went wrong while fetching trends" })
     }
 }
-
