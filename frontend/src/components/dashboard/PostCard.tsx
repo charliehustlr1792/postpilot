@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Edit3, Trash2, Copy, MoreVertical, Eye, Heart, MessageCircle, Share2 } from 'lucide-react';
-import { Post } from '@/types/post';
+import { Post, postPlatforms, postRollupStatus } from '@/types/post';
 import { PLATFORM_COLORS, PLATFORM_LABELS, POST_STATUS_COLORS, POST_STATUS_LABELS } from '@/lib/constants';
 import { formatDateTime, getRelativeTime, formatNumber } from '@/lib/utils';
 
@@ -17,34 +17,122 @@ interface PostCardProps {
 const PostCard: React.FC<PostCardProps> = ({ post, viewMode, onEdit, onDelete, onDuplicate }) => {
   const [showMenu, setShowMenu] = useState(false);
 
-  const latestAnalytics = post.analytics?.[0];
+  const platforms = postPlatforms(post);
+  const status = postRollupStatus(post);
+
+  // Aggregate the latest analytics across every target of this post.
+  const metrics = post.targets.reduce(
+    (acc, target) => {
+      const a = target.analytics?.[0];
+      if (a) {
+        acc.impressions += a.impressions;
+        acc.likes += a.likes;
+        acc.comments += a.comments;
+        acc.shares += a.shares;
+        acc.has = true;
+      }
+      return acc;
+    },
+    { impressions: 0, likes: 0, comments: 0, shares: 0, has: false },
+  );
 
   const getStatusInfo = () => {
-    switch (post.status) {
-      case 'PUBLISHED':
-        return {
-          label: POST_STATUS_LABELS.PUBLISHED,
-          time: post.publishedAt ? getRelativeTime(new Date(post.publishedAt)) : '',
-        };
-      case 'SCHEDULED':
-        return {
-          label: POST_STATUS_LABELS.SCHEDULED,
-          time: post.scheduledAt ? formatDateTime(new Date(post.scheduledAt)) : '',
-        };
+    switch (status) {
+      case 'PUBLISHED': {
+        const latest = post.targets
+          .map((t) => t.publishedAt)
+          .filter((d): d is string => !!d)
+          .sort()
+          .at(-1);
+        return { label: POST_STATUS_LABELS.PUBLISHED, time: latest ? getRelativeTime(new Date(latest)) : '' };
+      }
+      case 'SCHEDULED': {
+        const earliest = post.targets
+          .map((t) => t.scheduledAt)
+          .filter((d): d is string => !!d)
+          .sort()[0];
+        return { label: POST_STATUS_LABELS.SCHEDULED, time: earliest ? formatDateTime(new Date(earliest)) : '' };
+      }
       case 'DRAFT':
-        return {
-          label: POST_STATUS_LABELS.DRAFT,
-          time: `Updated ${getRelativeTime(new Date(post.updatedAt))}`,
-        };
+        return { label: POST_STATUS_LABELS.DRAFT, time: `Updated ${getRelativeTime(new Date(post.updatedAt))}` };
       case 'FAILED':
-        return {
-          label: POST_STATUS_LABELS.FAILED,
-          time: 'Retry needed',
-        };
+        return { label: POST_STATUS_LABELS.FAILED, time: 'Retry needed' };
     }
   };
 
   const statusInfo = getStatusInfo();
+
+  const platformBadges = (
+    <>
+      {platforms.map((platform) => (
+        <span
+          key={platform}
+          className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
+          style={{ backgroundColor: PLATFORM_COLORS[platform] }}
+        >
+          {PLATFORM_LABELS[platform]}
+        </span>
+      ))}
+    </>
+  );
+
+  const actionsMenu = (
+    <div className="relative">
+      <button
+        onClick={() => setShowMenu(!showMenu)}
+        className="p-2 hover:bg-[#F3EFEC] rounded-lg transition-colors"
+      >
+        <MoreVertical className="w-4 h-4 text-[#4D4946]" />
+      </button>
+      {showMenu && (
+        <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg border border-[#EAE7E4] shadow-lg z-10">
+          <button
+            onClick={() => { onEdit(); setShowMenu(false); }}
+            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#4D4946] hover:bg-[#F3EFEC] transition-colors"
+          >
+            <Edit3 className="w-4 h-4" />
+            Edit
+          </button>
+          <button
+            onClick={() => { onDuplicate(); setShowMenu(false); }}
+            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#4D4946] hover:bg-[#F3EFEC] transition-colors"
+          >
+            <Copy className="w-4 h-4" />
+            Duplicate
+          </button>
+          <button
+            onClick={() => { onDelete(); setShowMenu(false); }}
+            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors rounded-b-lg"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  const metricsRow = (extraClass: string) =>
+    metrics.has && (
+      <div className={extraClass}>
+        <span className="flex items-center gap-1">
+          <Eye className="w-3 h-3" />
+          {formatNumber(metrics.impressions)}
+        </span>
+        <span className="flex items-center gap-1">
+          <Heart className="w-3 h-3" />
+          {formatNumber(metrics.likes)}
+        </span>
+        <span className="flex items-center gap-1">
+          <MessageCircle className="w-3 h-3" />
+          {formatNumber(metrics.comments)}
+        </span>
+        <span className="flex items-center gap-1">
+          <Share2 className="w-3 h-3" />
+          {formatNumber(metrics.shares)}
+        </span>
+      </div>
+    );
 
   if (viewMode === 'list') {
     return (
@@ -65,53 +153,16 @@ const PostCard: React.FC<PostCardProps> = ({ post, viewMode, onEdit, onDelete, o
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between mb-2">
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Platform Badge */}
-                <span
-                  className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
-                  style={{ backgroundColor: PLATFORM_COLORS[post.platform] }}
-                >
-                  {PLATFORM_LABELS[post.platform]}
-                </span>
+                {/* Platform Badges */}
+                {platformBadges}
                 {/* Status Badge */}
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${POST_STATUS_COLORS[post.status]}`}>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${POST_STATUS_COLORS[status]}`}>
                   {statusInfo.label}
                 </span>
               </div>
 
               {/* Actions Menu */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="p-2 hover:bg-[#F3EFEC] rounded-lg transition-colors"
-                >
-                  <MoreVertical className="w-4 h-4 text-[#4D4946]" />
-                </button>
-                {showMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg border border-[#EAE7E4] shadow-lg z-10">
-                    <button
-                      onClick={() => { onEdit(); setShowMenu(false); }}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#4D4946] hover:bg-[#F3EFEC] transition-colors"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => { onDuplicate(); setShowMenu(false); }}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#4D4946] hover:bg-[#F3EFEC] transition-colors"
-                    >
-                      <Copy className="w-4 h-4" />
-                      Duplicate
-                    </button>
-                    <button
-                      onClick={() => { onDelete(); setShowMenu(false); }}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors rounded-b-lg"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Delete
-                    </button>
-                  </div>
-                )}
-              </div>
+              {actionsMenu}
             </div>
 
             {/* Post Content */}
@@ -122,26 +173,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, viewMode, onEdit, onDelete, o
               <span className="text-[#4D4946]/60 text-xs">{statusInfo.time}</span>
 
               {/* Metrics */}
-              {latestAnalytics && (
-                <div className="flex items-center gap-4 text-xs text-[#4D4946]/70">
-                  <span className="flex items-center gap-1">
-                    <Eye className="w-3 h-3" />
-                    {formatNumber(latestAnalytics.impressions)}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Heart className="w-3 h-3" />
-                    {formatNumber(latestAnalytics.likes)}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <MessageCircle className="w-3 h-3" />
-                    {formatNumber(latestAnalytics.comments)}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Share2 className="w-3 h-3" />
-                    {formatNumber(latestAnalytics.shares)}
-                  </span>
-                </div>
-              )}
+              {metricsRow('flex items-center gap-4 text-xs text-[#4D4946]/70')}
             </div>
           </div>
         </div>
@@ -167,49 +199,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, viewMode, onEdit, onDelete, o
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Platform Badge */}
-            <span
-              className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
-              style={{ backgroundColor: PLATFORM_COLORS[post.platform] }}
-            >
-              {PLATFORM_LABELS[post.platform]}
-            </span>
+            {/* Platform Badges */}
+            {platformBadges}
           </div>
 
           {/* Actions Menu */}
-          <div className="relative">
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-1 hover:bg-[#F3EFEC] rounded-lg transition-colors"
-            >
-              <MoreVertical className="w-4 h-4 text-[#4D4946]" />
-            </button>
-            {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg border border-[#EAE7E4] shadow-lg z-10">
-                <button
-                  onClick={() => { onEdit(); setShowMenu(false); }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#4D4946] hover:bg-[#F3EFEC] transition-colors"
-                >
-                  <Edit3 className="w-4 h-4" />
-                  Edit
-                </button>
-                <button
-                  onClick={() => { onDuplicate(); setShowMenu(false); }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#4D4946] hover:bg-[#F3EFEC] transition-colors"
-                >
-                  <Copy className="w-4 h-4" />
-                  Duplicate
-                </button>
-                <button
-                  onClick={() => { onDelete(); setShowMenu(false); }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors rounded-b-lg"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete
-                </button>
-              </div>
-            )}
-          </div>
+          {actionsMenu}
         </div>
 
         {/* Content */}
@@ -217,33 +212,14 @@ const PostCard: React.FC<PostCardProps> = ({ post, viewMode, onEdit, onDelete, o
 
         {/* Status */}
         <div className="flex items-center justify-between mb-3">
-          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${POST_STATUS_COLORS[post.status]}`}>
+          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${POST_STATUS_COLORS[status]}`}>
             {statusInfo.label}
           </span>
           <span className="text-[#4D4946]/60 text-xs">{statusInfo.time}</span>
         </div>
 
         {/* Metrics */}
-        {latestAnalytics && (
-          <div className="flex items-center justify-between pt-3 border-t border-[#EAE7E4] text-xs text-[#4D4946]/70">
-            <span className="flex items-center gap-1">
-              <Eye className="w-3 h-3" />
-              {formatNumber(latestAnalytics.impressions)}
-            </span>
-            <span className="flex items-center gap-1">
-              <Heart className="w-3 h-3" />
-              {formatNumber(latestAnalytics.likes)}
-            </span>
-            <span className="flex items-center gap-1">
-              <MessageCircle className="w-3 h-3" />
-              {formatNumber(latestAnalytics.comments)}
-            </span>
-            <span className="flex items-center gap-1">
-              <Share2 className="w-3 h-3" />
-              {formatNumber(latestAnalytics.shares)}
-            </span>
-          </div>
-        )}
+        {metricsRow('flex items-center justify-between pt-3 border-t border-[#EAE7E4] text-xs text-[#4D4946]/70')}
       </div>
     </div>
   );

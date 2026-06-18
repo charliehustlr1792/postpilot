@@ -34,77 +34,100 @@ model SocialAccount {
   id           String   @id @default(cuid())
   platform     Platform
   username     String
-  displayName  String?   
-  profileImage String?  
+  displayName  String?
+  profileImage String?
   accessToken  String
   refreshToken String?
-  tokenExpiry  DateTime? 
-  isActive     Boolean  @default(true) 
-  createdAt    DateTime @default(now()) 
-  updatedAt    DateTime @updatedAt      
-  
+  tokenExpiry  DateTime?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  posts Post[]
-  
+
+  targets PostTarget[]
+
   // prevents duplicate platform connections per user
   @@unique([userId, platform])
 }
 
+// A Post is the logical piece of content the user authors once.
+// It fans out to one PostTarget per platform/account it is published to.
 model Post {
-  id          String     @id @default(cuid())
-  content     String
-  images      String[]   @default([])
-  scheduledAt DateTime?
-  publishedAt DateTime?
-  status      PostStatus @default(DRAFT)
-  platform    Platform
-  //platformPostId String
-  
-  userId      String
-  user        User       @relation(fields: [userId], references: [id])
-  accountId   String
-  account     SocialAccount @relation(fields: [accountId], references: [id])
-  
-  analytics   Analytics[]
+  id        String   @id @default(cuid())
+  content   String
+  images    String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  targets PostTarget[]
+}
+
+// One delivery of a Post to a single platform/account.
+// Status, scheduling and publish results are tracked here because each
+// platform succeeds or fails independently.
+model PostTarget {
+  id             String     @id @default(cuid())
+  platform       Platform
+  status         PostStatus @default(DRAFT)
+  scheduledAt    DateTime?
+  publishedAt    DateTime?
+  platformPostId String? // ID returned by the platform after publishing
+  url            String? // permalink to the published post
+  error          String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  postId    String
+  post      Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  accountId String
+  account   SocialAccount @relation(fields: [accountId], references: [id])
+
+  analytics Analytics[]
+
+  // a post can only target a given account once
+  @@unique([postId, accountId])
 }
 
 model Analytics {
-  id          String @id @default(cuid())
-  postId      String
-  post        Post   @relation(fields: [postId], references: [id])
+  id           String     @id @default(cuid())
+  postTargetId String
+  postTarget   PostTarget @relation(fields: [postTargetId], references: [id], onDelete: Cascade)
 
-  userId      String
-  user        User   @relation(fields: [userId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
-  impressions Int    @default(0)
-  likes       Int    @default(0)
-  shares      Int    @default(0)
-  comments    Int    @default(0)
-  clicks      Int    @default(0)
-  reach      Int    @default(0)
-  saves       Int    @default(0)
+  impressions Int @default(0)
+  likes       Int @default(0)
+  shares      Int @default(0)
+  comments    Int @default(0)
+  clicks      Int @default(0)
+  reach       Int @default(0)
+  saves       Int @default(0)
 
   engagementRate Float @default(0)
-  ctr           Float @default(0)
-  
-  recordedAt  DateTime @default(now())
-  createdAt   DateTime @default(now())
+  ctr            Float @default(0)
+
+  recordedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
 }
 
 model ScheduledJob {
-  id          String    @id @default(cuid())
-  postId      String
-  jobId       String    @unique // Bull queue job ID
-  status      JobStatus @default(PENDING)
+  id           String    @id @default(cuid())
+  postTargetId String
+  jobId        String    @unique // Bull queue job ID
+  status       JobStatus @default(PENDING)
   scheduledFor DateTime
-  attempts    Int       @default(0)
-  maxAttempts Int       @default(3)
-  error       String?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  attempts     Int       @default(0)
+  maxAttempts  Int       @default(3)
+  error        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("scheduled_jobs")
 }

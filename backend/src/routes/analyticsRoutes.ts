@@ -12,6 +12,6 @@ const router = Router();
 router.get('/analytics/overview', requireAuth(), getAnalyticsOverview);
 router.get('/analytics/trends', requireAuth(), getAnalyticsTrends);
 router.get('/posts/:postId/analytics', requireAuth(), getPostAnalytics);
-router.post('/posts/:postId/analytics', requireAuth(), recordAnalytics);
+router.post('/targets/:targetId/analytics', requireAuth(), recordAnalytics);
 
 export default router;

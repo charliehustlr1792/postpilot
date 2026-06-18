@@ -1,5 +1,5 @@
-export interface PostPublishJobData{
-    postId:string;
-    userId:string;
-    socialAccountId:string;
+export interface PostPublishJobData {
+    postTargetId: string;
+    userId: string;
+    accountId: string;
 }

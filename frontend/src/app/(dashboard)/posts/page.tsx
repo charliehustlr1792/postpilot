@@ -6,7 +6,7 @@ import { Plus, Search, Grid3x3, List } from 'lucide-react';
 import PostCard from '@/components/dashboard/PostCard';
 import CreatePostModal from '@/components/posts/CreatePostModal';
 //import PostFilters from '@/components/posts/PostFilters';
-import { Post, Platform, PostStatus } from '@/types/post';
+import { Post, PostTarget, Platform, PostStatus } from '@/types/post';
 
 const PostsPage = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -16,102 +16,129 @@ const PostsPage = () => {
   //const [showFilters, setShowFilters] = useState(false);
 
   // Mock posts data — replace with real API data in Sprint 2.
-  // Shape matches the backend API response exactly (single platform, uppercase enums, ISO date strings).
-  const mockPosts: Post[] = [
-    {
-      id: '1',
-      content: 'Just launched our new AI-powered analytics dashboard! 🚀 Check it out and let us know what you think. #tech #analytics #AI',
-      platform: 'TWITTER',
-      status: 'PUBLISHED',
-      publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-      scheduledAt: null,
-      images: ['https://images.unsplash.com/photo-1551650975-87deedd944c3?w=400'],
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-      userId: 'user1',
-      accountId: 'acc1',
-      account: { platform: 'TWITTER', username: '@postpilot', displayName: 'PostPilot' },
-      analytics: [{ id: 'a1', impressions: 2450, likes: 89, comments: 12, shares: 23, clicks: 156, reach: 1800, saves: 5, engagementRate: 7.2, ctr: 6.4, recordedAt: new Date().toISOString() }],
-    },
-    {
-      id: '2',
-      content: 'Behind the scenes of our product development process. Swipe to see more! 📱 #startup #productdev',
-      platform: 'INSTAGRAM',
-      status: 'PUBLISHED',
-      publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-      scheduledAt: null,
-      images: ['https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400'],
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-      userId: 'user1',
-      accountId: 'acc2',
-      account: { platform: 'INSTAGRAM', username: 'postpilot', displayName: 'PostPilot' },
-      analytics: [{ id: 'a2', impressions: 3200, likes: 156, comments: 28, shares: 45, clicks: 89, reach: 2600, saves: 34, engagementRate: 9.8, ctr: 2.8, recordedAt: new Date().toISOString() }],
-    },
-    {
-      id: '3',
-      content: 'Exciting news coming next week! Stay tuned 👀 #announcement',
-      platform: 'LINKEDIN',
-      status: 'SCHEDULED',
-      scheduledAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
-      publishedAt: null,
-      images: [],
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
-      userId: 'user1',
-      accountId: 'acc3',
-      account: { platform: 'LINKEDIN', username: 'postpilot', displayName: 'PostPilot' },
-    },
-    {
-      id: '4',
-      content: 'Working on something amazing. Draft post to refine later.',
-      platform: 'TWITTER',
-      status: 'DRAFT',
-      scheduledAt: null,
-      publishedAt: null,
-      images: [],
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 1).toISOString(),
-      userId: 'user1',
-      accountId: 'acc1',
-      account: { platform: 'TWITTER', username: '@postpilot', displayName: 'PostPilot' },
-    },
-    {
-      id: '5',
-      content: "Weekend vibes! What's everyone working on? 🌟",
-      platform: 'FACEBOOK',
-      status: 'PUBLISHED',
-      publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-      scheduledAt: null,
-      images: [],
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-      userId: 'user1',
-      accountId: 'acc4',
-      account: { platform: 'FACEBOOK', username: 'PostPilot', displayName: 'PostPilot' },
-      analytics: [{ id: 'a5', impressions: 5600, likes: 234, comments: 45, shares: 67, clicks: 123, reach: 4200, saves: 18, engagementRate: 8.3, ctr: 2.2, recordedAt: new Date().toISOString() }],
-    },
-    {
-      id: '6',
-      content: 'Check out our latest blog post about social media marketing trends in 2025! Link in bio 🔗',
-      platform: 'LINKEDIN',
-      status: 'SCHEDULED',
-      scheduledAt: new Date(Date.now() + 1000 * 60 * 60 * 48).toISOString(),
-      publishedAt: null,
-      images: [],
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-      userId: 'user1',
-      accountId: 'acc3',
-      account: { platform: 'LINKEDIN', username: 'postpilot', displayName: 'PostPilot' },
-    },
-  ];
+  // Shape matches the backend API response exactly: a Post fans out to one
+  // PostTarget per platform, each with its own status / schedule / analytics.
+  const mockPosts: Post[] = React.useMemo(() => {
+    const now = Date.now();
+    const iso = (msAgo: number) => new Date(now - msAgo).toISOString();
+    const isoIn = (msAhead: number) => new Date(now + msAhead).toISOString();
+
+    let targetSeq = 0;
+    const mkTarget = (
+      postId: string,
+      platform: Platform,
+      status: PostStatus,
+      opts: {
+        scheduledAt?: string | null;
+        publishedAt?: string | null;
+        username?: string;
+        analytics?: PostTarget['analytics'];
+      } = {},
+    ): PostTarget => {
+      const id = `t${++targetSeq}`;
+      return {
+        id,
+        platform,
+        status,
+        scheduledAt: opts.scheduledAt ?? null,
+        publishedAt: opts.publishedAt ?? null,
+        platformPostId: status === 'PUBLISHED' ? `${platform.toLowerCase()}_${id}` : null,
+        url: null,
+        error: null,
+        createdAt: iso(1000 * 60 * 60 * 24),
+        updatedAt: iso(1000 * 60 * 60),
+        postId,
+        accountId: `acc-${platform}`,
+        account: { id: `acc-${platform}`, platform, username: opts.username ?? 'postpilot', displayName: 'PostPilot' },
+        analytics: opts.analytics,
+      };
+    };
+
+    const a = (impressions: number, likes: number, comments: number, shares: number): PostTarget['analytics'] => [
+      { id: `an${++targetSeq}`, impressions, likes, comments, shares, clicks: Math.round(impressions * 0.04), reach: Math.round(impressions * 0.8), saves: Math.round(likes * 0.1), engagementRate: 8, ctr: 2.5, recordedAt: iso(0) },
+    ];
+
+    return [
+      {
+        id: '1',
+        content: 'Just launched our new AI-powered analytics dashboard! 🚀 Check it out and let us know what you think. #tech #analytics #AI',
+        images: ['https://images.unsplash.com/photo-1551650975-87deedd944c3?w=400'],
+        createdAt: iso(1000 * 60 * 60 * 24 * 2),
+        updatedAt: iso(1000 * 60 * 60 * 2),
+        userId: 'user1',
+        targets: [
+          mkTarget('1', 'TWITTER', 'PUBLISHED', { publishedAt: iso(1000 * 60 * 60 * 2), username: '@postpilot', analytics: a(2450, 89, 12, 23) }),
+          mkTarget('1', 'LINKEDIN', 'PUBLISHED', { publishedAt: iso(1000 * 60 * 60 * 2), analytics: a(1800, 64, 9, 14) }),
+        ],
+      },
+      {
+        id: '2',
+        content: 'Behind the scenes of our product development process. Swipe to see more! 📱 #startup #productdev',
+        images: ['https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400'],
+        createdAt: iso(1000 * 60 * 60 * 24 * 3),
+        updatedAt: iso(1000 * 60 * 60 * 5),
+        userId: 'user1',
+        targets: [
+          mkTarget('2', 'INSTAGRAM', 'PUBLISHED', { publishedAt: iso(1000 * 60 * 60 * 5), analytics: a(3200, 156, 28, 45) }),
+          mkTarget('2', 'FACEBOOK', 'PUBLISHED', { publishedAt: iso(1000 * 60 * 60 * 5), analytics: a(1500, 70, 11, 19) }),
+        ],
+      },
+      {
+        id: '3',
+        content: 'Exciting news coming next week! Stay tuned 👀 #announcement',
+        images: [],
+        createdAt: iso(1000 * 60 * 60 * 12),
+        updatedAt: iso(1000 * 60 * 60 * 12),
+        userId: 'user1',
+        targets: [
+          mkTarget('3', 'TWITTER', 'SCHEDULED', { scheduledAt: isoIn(1000 * 60 * 60 * 24), username: '@postpilot' }),
+          mkTarget('3', 'INSTAGRAM', 'SCHEDULED', { scheduledAt: isoIn(1000 * 60 * 60 * 24) }),
+          mkTarget('3', 'LINKEDIN', 'SCHEDULED', { scheduledAt: isoIn(1000 * 60 * 60 * 24) }),
+        ],
+      },
+      {
+        id: '4',
+        content: 'Working on something amazing. Draft post to refine later.',
+        images: [],
+        createdAt: iso(1000 * 60 * 60 * 6),
+        updatedAt: iso(1000 * 60 * 60 * 1),
+        userId: 'user1',
+        targets: [mkTarget('4', 'TWITTER', 'DRAFT', { username: '@postpilot' })],
+      },
+      {
+        id: '5',
+        content: "Weekend vibes! What's everyone working on? 🌟",
+        images: [],
+        createdAt: iso(1000 * 60 * 60 * 24 * 3),
+        updatedAt: iso(1000 * 60 * 60 * 24 * 2),
+        userId: 'user1',
+        targets: [
+          mkTarget('5', 'TWITTER', 'PUBLISHED', { publishedAt: iso(1000 * 60 * 60 * 24 * 2), username: '@postpilot', analytics: a(5600, 234, 45, 67) }),
+          // One target failed independently — demonstrates the Model B value.
+          mkTarget('5', 'FACEBOOK', 'FAILED'),
+        ],
+      },
+      {
+        id: '6',
+        content: 'Check out our latest blog post about social media marketing trends in 2025! Link in bio 🔗',
+        images: [],
+        createdAt: iso(1000 * 60 * 60 * 24),
+        updatedAt: iso(1000 * 60 * 60 * 24),
+        userId: 'user1',
+        targets: [
+          mkTarget('6', 'LINKEDIN', 'SCHEDULED', { scheduledAt: isoIn(1000 * 60 * 60 * 48) }),
+          mkTarget('6', 'FACEBOOK', 'SCHEDULED', { scheduledAt: isoIn(1000 * 60 * 60 * 48) }),
+        ],
+      },
+    ];
+  }, []);
 
   const filterPosts = (posts: Post[]) => {
     let filtered = posts;
 
+    // A post matches a status filter if any of its targets has that status.
     if (activeFilter !== 'ALL') {
-      filtered = filtered.filter(post => post.status === activeFilter);
+      filtered = filtered.filter(post => post.targets.some(t => t.status === activeFilter));
     }
 
     if (searchQuery) {
@@ -127,7 +154,7 @@ const PostsPage = () => {
 
   const getStatusCount = (status: PostStatus | 'ALL') => {
     if (status === 'ALL') return mockPosts.length;
-    return mockPosts.filter(post => post.status === status).length;
+    return mockPosts.filter(post => post.targets.some(t => t.status === status)).length;
   };
 
   return (

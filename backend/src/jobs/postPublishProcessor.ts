@@ -1,72 +1,79 @@
-import {Job} from 'bullmq'
+import { Job } from 'bullmq'
 import prisma from '../lib/db'
-import {publishPostToSocialMedia} from '../services/socialMediaService'
+import { publishPostToSocialMedia } from '../services/socialMediaService'
 import { PostPublishJobData } from '../types/postPublishJobData'
 
-export const processPostPublish=async(job:Job<PostPublishJobData>)=>{
-    const {postId,userId,socialAccountId}=job.data;
-    try{
-        console.log(`Processing publish job for post:${postId}`);
+export const processPostPublish = async (job: Job<PostPublishJobData>) => {
+    const { postTargetId } = job.data;
+    try {
+        console.log(`Processing publish job for target:${postTargetId}`);
 
-        //get the post details
-        const post=await prisma.post.findUnique({
-            where:{id:postId},
-            include:{
-                account:true,
-                user:true
-            }
+        // Get the target along with its post content and account credentials.
+        const target = await prisma.postTarget.findUnique({
+            where: { id: postTargetId },
+            include: {
+                post: true,
+                account: true,
+            },
         })
 
-        if(!post){
-            throw new Error(`Post not found:${postId}`)
+        if (!target) {
+            throw new Error(`Post target not found:${postTargetId}`)
         }
 
-        if(post.status==='PUBLISHED'){
-            console.log('Post already published,skipping');
-            return {sucess:true,message:'ALready published'}
+        if (target.status === 'PUBLISHED') {
+            console.log('Target already published, skipping');
+            return { success: true, message: 'Already published' }
         }
 
-        const result=await publishPostToSocialMedia(post);//publishes to social media platform
-
-        //update post status
-        await prisma.post.update({
-            where:{id:postId},
-            data:{
-                status:'PUBLISHED',
-                publishedAt:new Date(),
-                //platformPostId:result.platformPostId,
-            }
+        const result = await publishPostToSocialMedia({
+            targetId: target.id,
+            content: target.post.content,
+            images: target.post.images,
+            account: {
+                id: target.account.id,
+                platform: target.account.platform,
+                username: target.account.username,
+                accessToken: target.account.accessToken,
+                refreshToken: target.account.refreshToken,
+            },
         })
 
-        //remove scheduled job record
-        await prisma.scheduledJob.deleteMany({
-            where:{postId}
+        // Mark the target published and store the platform's response.
+        await prisma.postTarget.update({
+            where: { id: postTargetId },
+            data: {
+                status: 'PUBLISHED',
+                publishedAt: new Date(),
+                platformPostId: result.platformPostId,
+                url: result.url ?? null,
+                error: null,
+            },
         })
 
-        console.log(`Sucessfully published post:${postId}`)
+        // Clear the scheduled job record for this target.
+        await prisma.scheduledJob.deleteMany({ where: { postTargetId } })
+
+        console.log(`Successfully published target:${postTargetId}`)
         return result
+    } catch (error) {
+        console.error(`Error publishing target ${postTargetId}:`, error)
 
-    }catch(error){
-        console.error(`Error publishing post ${postId}:`,error)
+        const message = error instanceof Error ? error.message : String(error)
 
-        //update post status to failed 
-        await prisma.post.update({
-            where:{id:postId},
-            data:{
-                status:'FAILED',
-            }
+        // Mark this target failed (other targets of the same post are unaffected).
+        await prisma.postTarget.update({
+            where: { id: postTargetId },
+            data: { status: 'FAILED', error: message },
         })
 
-        //update scheduled job with error
         await prisma.scheduledJob.updateMany({
-            where:{postId},
-            data:{
-                status:'FAILED',
-                error: (error instanceof Error ? error.message : String(error)),
-                attempts:{
-                    increment:1,
-                }
-            }
+            where: { postTargetId },
+            data: {
+                status: 'FAILED',
+                error: message,
+                attempts: { increment: 1 },
+            },
         })
 
         throw error
