@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { X, Image as ImageIcon, Calendar as CalendarIcon, Clock, Send, Smile } from 'lucide-react';
 import { Platform } from '@/types/post';
-import { PLATFORM_COLORS } from '@/lib/constants';
+import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import { getCharacterLimit } from '@/lib/utils';
 
 interface CreatePostModalProps {
@@ -16,18 +16,17 @@ interface CreatePostModalProps {
 
 const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSave, editPost }) => {
   const [content, setContent] = useState(editPost?.content || '');
-  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(editPost?.platforms || ['twitter']);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(editPost?.platforms || ['TWITTER']);
   const [selectedDate, setSelectedDate] = useState(editPost?.scheduledAt || '');
   const [selectedTime, setSelectedTime] = useState('14:00');
   const [images, setImages] = useState<string[]>(editPost?.images || []);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const platforms: { id: Platform; name: string }[] = [
-    { id: 'twitter', name: 'Twitter' },
-    { id: 'instagram', name: 'Instagram' },
-    { id: 'linkedin', name: 'LinkedIn' },
-    { id: 'facebook', name: 'Facebook' },
-    { id: 'pinterest', name: 'Pinterest' },
+    { id: 'TWITTER',   name: PLATFORM_LABELS.TWITTER },
+    { id: 'INSTAGRAM', name: PLATFORM_LABELS.INSTAGRAM },
+    { id: 'LINKEDIN',  name: PLATFORM_LABELS.LINKEDIN },
+    { id: 'FACEBOOK',  name: PLATFORM_LABELS.FACEBOOK },
   ];
 
   const commonEmojis = ['😊', '🎉', '🚀', '💡', '✨', '👍', '❤️', '🔥', '💪', '🌟', '📱', '💼'];

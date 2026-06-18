@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Edit3, Trash2, Copy, MoreVertical, Eye, Heart, MessageCircle, Share2 } from 'lucide-react';
 import { Post } from '@/types/post';
-import { PLATFORM_COLORS, POST_STATUS_COLORS } from '@/lib/constants';
+import { PLATFORM_COLORS, PLATFORM_LABELS, POST_STATUS_COLORS, POST_STATUS_LABELS } from '@/lib/constants';
 import { formatDateTime, getRelativeTime, formatNumber } from '@/lib/utils';
 
 interface PostCardProps {
@@ -17,26 +17,28 @@ interface PostCardProps {
 const PostCard: React.FC<PostCardProps> = ({ post, viewMode, onEdit, onDelete, onDuplicate }) => {
   const [showMenu, setShowMenu] = useState(false);
 
+  const latestAnalytics = post.analytics?.[0];
+
   const getStatusInfo = () => {
     switch (post.status) {
-      case 'published':
+      case 'PUBLISHED':
         return {
-          label: 'Published',
-          time: post.publishedAt ? getRelativeTime(post.publishedAt) : '',
+          label: POST_STATUS_LABELS.PUBLISHED,
+          time: post.publishedAt ? getRelativeTime(new Date(post.publishedAt)) : '',
         };
-      case 'scheduled':
+      case 'SCHEDULED':
         return {
-          label: 'Scheduled',
-          time: post.scheduledAt ? formatDateTime(post.scheduledAt) : '',
+          label: POST_STATUS_LABELS.SCHEDULED,
+          time: post.scheduledAt ? formatDateTime(new Date(post.scheduledAt)) : '',
         };
-      case 'draft':
+      case 'DRAFT':
         return {
-          label: 'Draft',
-          time: `Updated ${getRelativeTime(post.updatedAt)}`,
+          label: POST_STATUS_LABELS.DRAFT,
+          time: `Updated ${getRelativeTime(new Date(post.updatedAt))}`,
         };
-      case 'failed':
+      case 'FAILED':
         return {
-          label: 'Failed',
+          label: POST_STATUS_LABELS.FAILED,
           time: 'Retry needed',
         };
     }
@@ -63,16 +65,13 @@ const PostCard: React.FC<PostCardProps> = ({ post, viewMode, onEdit, onDelete, o
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between mb-2">
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Platform Badges */}
-                {post.platforms.map((platform) => (
-                  <span
-                    key={platform}
-                    className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
-                    style={{ backgroundColor: PLATFORM_COLORS[platform] }}
-                  >
-                  {/* {PLATFORM_ICONS[platform]} */}
-                  </span>
-                ))}
+                {/* Platform Badge */}
+                <span
+                  className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                  style={{ backgroundColor: PLATFORM_COLORS[post.platform] }}
+                >
+                  {PLATFORM_LABELS[post.platform]}
+                </span>
                 {/* Status Badge */}
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${POST_STATUS_COLORS[post.status]}`}>
                   {statusInfo.label}
@@ -123,23 +122,23 @@ const PostCard: React.FC<PostCardProps> = ({ post, viewMode, onEdit, onDelete, o
               <span className="text-[#4D4946]/60 text-xs">{statusInfo.time}</span>
 
               {/* Metrics */}
-              {post.metrics && (
+              {latestAnalytics && (
                 <div className="flex items-center gap-4 text-xs text-[#4D4946]/70">
                   <span className="flex items-center gap-1">
                     <Eye className="w-3 h-3" />
-                    {formatNumber(post.metrics.impressions)}
+                    {formatNumber(latestAnalytics.impressions)}
                   </span>
                   <span className="flex items-center gap-1">
                     <Heart className="w-3 h-3" />
-                    {formatNumber(post.metrics.likes)}
+                    {formatNumber(latestAnalytics.likes)}
                   </span>
                   <span className="flex items-center gap-1">
                     <MessageCircle className="w-3 h-3" />
-                    {formatNumber(post.metrics.comments)}
+                    {formatNumber(latestAnalytics.comments)}
                   </span>
                   <span className="flex items-center gap-1">
                     <Share2 className="w-3 h-3" />
-                    {formatNumber(post.metrics.shares)}
+                    {formatNumber(latestAnalytics.shares)}
                   </span>
                 </div>
               )}
@@ -168,16 +167,13 @@ const PostCard: React.FC<PostCardProps> = ({ post, viewMode, onEdit, onDelete, o
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Platform Badges */}
-            {post.platforms.map((platform) => (
-              <span
-                key={platform}
-                className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
-                style={{ backgroundColor: PLATFORM_COLORS[platform] }}
-              >
-                {/* {PLATFORM_ICONS[platform]} */}
-              </span>
-            ))}
+            {/* Platform Badge */}
+            <span
+              className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
+              style={{ backgroundColor: PLATFORM_COLORS[post.platform] }}
+            >
+              {PLATFORM_LABELS[post.platform]}
+            </span>
           </div>
 
           {/* Actions Menu */}
@@ -228,23 +224,23 @@ const PostCard: React.FC<PostCardProps> = ({ post, viewMode, onEdit, onDelete, o
         </div>
 
         {/* Metrics */}
-        {post.metrics && (
+        {latestAnalytics && (
           <div className="flex items-center justify-between pt-3 border-t border-[#EAE7E4] text-xs text-[#4D4946]/70">
             <span className="flex items-center gap-1">
               <Eye className="w-3 h-3" />
-              {formatNumber(post.metrics.impressions)}
+              {formatNumber(latestAnalytics.impressions)}
             </span>
             <span className="flex items-center gap-1">
               <Heart className="w-3 h-3" />
-              {formatNumber(post.metrics.likes)}
+              {formatNumber(latestAnalytics.likes)}
             </span>
             <span className="flex items-center gap-1">
               <MessageCircle className="w-3 h-3" />
-              {formatNumber(post.metrics.comments)}
+              {formatNumber(latestAnalytics.comments)}
             </span>
             <span className="flex items-center gap-1">
               <Share2 className="w-3 h-3" />
-              {formatNumber(post.metrics.shares)}
+              {formatNumber(latestAnalytics.shares)}
             </span>
           </div>
         )}

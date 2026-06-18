@@ -22,13 +22,13 @@ const SettingsPage = () => {
     { id: 'security', label: 'Security', icon: Shield },
   ];
 
-  // Mock connected accounts - replace with real data
+  // Mock connected accounts — replace with real data in Sprint 2.
   const connectedAccounts = [
-    { platform: 'twitter', username: '@johndoe', connected: true, posts: 45 },
-    { platform: 'instagram', username: 'johndoe', connected: true, posts: 32 },
-    { platform: 'linkedin', username: 'John Doe', connected: true, posts: 28 },
-    { platform: 'facebook', username: 'John Doe', connected: false, posts: 0 },
-  ];
+    { platform: 'TWITTER',   username: '@johndoe',  connected: true,  posts: 45 },
+    { platform: 'INSTAGRAM', username: 'johndoe',   connected: true,  posts: 32 },
+    { platform: 'LINKEDIN',  username: 'John Doe',  connected: true,  posts: 28 },
+    { platform: 'FACEBOOK',  username: 'John Doe',  connected: false, posts: 0  },
+  ] as const;
 
   // Mock team members - replace with real data
   const teamMembers = [

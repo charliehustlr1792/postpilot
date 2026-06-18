@@ -40,46 +40,10 @@ const AnalyticsPage = () => {
   ];
 
   const topPosts = [
-    {
-      id: '1',
-      content: 'Just launched our new AI-powered analytics dashboard! 🚀',
-      platform: 'twitter',
-      impressions: 15420,
-      likes: 892,
-      shares: 234,
-      comments: 156,
-      engagementRate: 8.4,
-    },
-    {
-      id: '2',
-      content: 'Behind the scenes of our product development process 📱',
-      platform: 'instagram',
-      impressions: 12680,
-      likes: 1240,
-      shares: 189,
-      comments: 203,
-      engagementRate: 12.9,
-    },
-    {
-      id: '3',
-      content: 'Excited to share our company growth story! 💼',
-      platform: 'linkedin',
-      impressions: 9850,
-      likes: 567,
-      shares: 145,
-      comments: 89,
-      engagementRate: 8.1,
-    },
-    {
-      id: '4',
-      content: 'Weekend vibes! What are you working on? 🌟',
-      platform: 'facebook',
-      impressions: 8920,
-      likes: 423,
-      shares: 98,
-      comments: 67,
-      engagementRate: 6.6,
-    },
+    { id: '1', content: 'Just launched our new AI-powered analytics dashboard! 🚀', platform: 'TWITTER',   impressions: 15420, likes: 892,  shares: 234, comments: 156, engagementRate: 8.4 },
+    { id: '2', content: 'Behind the scenes of our product development process 📱',   platform: 'INSTAGRAM', impressions: 12680, likes: 1240, shares: 189, comments: 203, engagementRate: 12.9 },
+    { id: '3', content: 'Excited to share our company growth story! 💼',             platform: 'LINKEDIN',  impressions: 9850,  likes: 567,  shares: 145, comments: 89,  engagementRate: 8.1 },
+    { id: '4', content: 'Weekend vibes! What are you working on? 🌟',               platform: 'FACEBOOK',  impressions: 8920,  likes: 423,  shares: 98,  comments: 67,  engagementRate: 6.6 },
   ];
 
   const COLORS = ['#FF6E00', '#FF9B4F', '#FFB67D', '#FFD4B2'];

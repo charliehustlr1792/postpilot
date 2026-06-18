@@ -5,13 +5,15 @@ import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Eye }
 import { PLATFORM_COLORS} from '@/lib/constants';
 import CreatePostModal from '@/components/posts/CreatePostModal';
 
+import { Platform } from '@/types/post';
+
 interface ScheduledPost {
   id: string;
   content: string;
-  platform: string;
+  platform: Platform;
   date: string; // YYYY-MM-DD
   time: string; // HH:MM
-  status: 'scheduled' | 'published';
+  status: 'SCHEDULED' | 'PUBLISHED';
 }
 
 const CalendarPage = () => {
@@ -21,56 +23,14 @@ const CalendarPage = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<ScheduledPost | null>(null);
 
-  // Mock scheduled posts - replace with real API data
+  // Mock scheduled posts — replace with real API data in Sprint 2.
   const scheduledPosts: ScheduledPost[] = [
-    {
-      id: '1',
-      content: 'Just launched our new AI-powered analytics dashboard! 🚀 #tech',
-      platform: 'twitter',
-      date: '2025-01-15',
-      time: '14:30',
-      status: 'scheduled',
-    },
-    {
-      id: '2',
-      content: 'Behind the scenes of our product development process 📱',
-      platform: 'instagram',
-      date: '2025-01-16',
-      time: '18:00',
-      status: 'scheduled',
-    },
-    {
-      id: '3',
-      content: 'Excited to share our company growth story! 💼',
-      platform: 'linkedin',
-      date: '2025-01-16',
-      time: '09:00',
-      status: 'scheduled',
-    },
-    {
-      id: '4',
-      content: 'Weekend vibes! What are you working on? 🌟',
-      platform: 'facebook',
-      date: '2025-01-18',
-      time: '16:00',
-      status: 'scheduled',
-    },
-    {
-      id: '5',
-      content: 'New blog post about social media trends 📝',
-      platform: 'linkedin',
-      date: '2025-01-20',
-      time: '12:00',
-      status: 'scheduled',
-    },
-    {
-      id: '6',
-      content: 'Check out our latest product update! 🎉',
-      platform: 'twitter',
-      date: '2025-01-22',
-      time: '15:00',
-      status: 'scheduled',
-    },
+    { id: '1', content: 'Just launched our new AI-powered analytics dashboard! 🚀 #tech', platform: 'TWITTER',   date: '2026-06-20', time: '14:30', status: 'SCHEDULED' },
+    { id: '2', content: 'Behind the scenes of our product development process 📱',       platform: 'INSTAGRAM', date: '2026-06-21', time: '18:00', status: 'SCHEDULED' },
+    { id: '3', content: 'Excited to share our company growth story! 💼',                platform: 'LINKEDIN',  date: '2026-06-21', time: '09:00', status: 'SCHEDULED' },
+    { id: '4', content: 'Weekend vibes! What are you working on? 🌟',                   platform: 'FACEBOOK',  date: '2026-06-23', time: '16:00', status: 'SCHEDULED' },
+    { id: '5', content: 'New blog post about social media trends 📝',                   platform: 'LINKEDIN',  date: '2026-06-25', time: '12:00', status: 'SCHEDULED' },
+    { id: '6', content: 'Check out our latest product update! 🎉',                      platform: 'TWITTER',   date: '2026-06-27', time: '15:00', status: 'SCHEDULED' },
   ];
 
   const today = new Date();

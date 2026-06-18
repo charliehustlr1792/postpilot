@@ -73,30 +73,24 @@ export function formatPercentage(value: number, total: number): string {
   return `${((value / total) * 100).toFixed(1)}%`;
 }
 
-// Platform utilities
+// Platform utilities — keys match the backend Platform enum (uppercase).
 export function getPlatformName(platform: string): string {
   const names: Record<string, string> = {
-    twitter: 'Twitter',
-    instagram: 'Instagram',
-    linkedin: 'LinkedIn',
-    facebook: 'Facebook',
-    tiktok: 'TikTok',
-    pinterest: 'Pinterest',
-    reddit: 'Reddit',
+    TWITTER:   'Twitter',
+    INSTAGRAM: 'Instagram',
+    LINKEDIN:  'LinkedIn',
+    FACEBOOK:  'Facebook',
   };
   return names[platform] || platform;
 }
 
-// Character limit per platform
+// Character limit per platform — keys match the backend Platform enum (uppercase).
 export function getCharacterLimit(platform: string): number {
   const limits: Record<string, number> = {
-    twitter: 280,
-    instagram: 2200,
-    linkedin: 3000,
-    facebook: 63206,
-    tiktok: 2200,
-    pinterest: 500,
-    reddit: 40000,
+    TWITTER:   280,
+    INSTAGRAM: 2200,
+    LINKEDIN:  3000,
+    FACEBOOK:  63206,
   };
   return limits[platform] || 2000;
 }

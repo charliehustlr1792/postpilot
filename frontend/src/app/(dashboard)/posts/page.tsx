@@ -6,113 +6,114 @@ import { Plus, Search, Grid3x3, List } from 'lucide-react';
 import PostCard from '@/components/dashboard/PostCard';
 import CreatePostModal from '@/components/posts/CreatePostModal';
 //import PostFilters from '@/components/posts/PostFilters';
-import { Post, PostStatus } from '@/types/post';
+import { Post, Platform, PostStatus } from '@/types/post';
 
 const PostsPage = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<PostStatus | 'all'>('all');
+  const [activeFilter, setActiveFilter] = useState<PostStatus | 'ALL'>('ALL');
   //const [showFilters, setShowFilters] = useState(false);
 
-  // Mock posts data - replace with real API data
+  // Mock posts data — replace with real API data in Sprint 2.
+  // Shape matches the backend API response exactly (single platform, uppercase enums, ISO date strings).
   const mockPosts: Post[] = [
     {
       id: '1',
       content: 'Just launched our new AI-powered analytics dashboard! 🚀 Check it out and let us know what you think. #tech #analytics #AI',
-      platforms: ['twitter', 'linkedin'],
-      status: 'published',
-      publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
+      platform: 'TWITTER',
+      status: 'PUBLISHED',
+      publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+      scheduledAt: null,
       images: ['https://images.unsplash.com/photo-1551650975-87deedd944c3?w=400'],
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
       userId: 'user1',
-      metrics: {
-        impressions: 2450,
-        likes: 89,
-        comments: 12,
-        shares: 23,
-        clicks: 156,
-        engagementRate: 7.2,
-      },
+      accountId: 'acc1',
+      account: { platform: 'TWITTER', username: '@postpilot', displayName: 'PostPilot' },
+      analytics: [{ id: 'a1', impressions: 2450, likes: 89, comments: 12, shares: 23, clicks: 156, reach: 1800, saves: 5, engagementRate: 7.2, ctr: 6.4, recordedAt: new Date().toISOString() }],
     },
     {
       id: '2',
       content: 'Behind the scenes of our product development process. Swipe to see more! 📱 #startup #productdev',
-      platforms: ['instagram', 'facebook'],
-      status: 'published',
-      publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 5),
+      platform: 'INSTAGRAM',
+      status: 'PUBLISHED',
+      publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
+      scheduledAt: null,
       images: ['https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400'],
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 5),
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
+      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
       userId: 'user1',
-      metrics: {
-        impressions: 3200,
-        likes: 156,
-        comments: 28,
-        shares: 45,
-        clicks: 89,
-        engagementRate: 9.8,
-      },
+      accountId: 'acc2',
+      account: { platform: 'INSTAGRAM', username: 'postpilot', displayName: 'PostPilot' },
+      analytics: [{ id: 'a2', impressions: 3200, likes: 156, comments: 28, shares: 45, clicks: 89, reach: 2600, saves: 34, engagementRate: 9.8, ctr: 2.8, recordedAt: new Date().toISOString() }],
     },
     {
       id: '3',
       content: 'Exciting news coming next week! Stay tuned 👀 #announcement',
-      platforms: ['twitter', 'instagram', 'linkedin'],
-      status: 'scheduled',
-      scheduledAt: new Date(Date.now() + 1000 * 60 * 60 * 24),
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 12),
+      platform: 'LINKEDIN',
+      status: 'SCHEDULED',
+      scheduledAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+      publishedAt: null,
+      images: [],
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
+      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
       userId: 'user1',
+      accountId: 'acc3',
+      account: { platform: 'LINKEDIN', username: 'postpilot', displayName: 'PostPilot' },
     },
     {
       id: '4',
       content: 'Working on something amazing. Draft post to refine later.',
-      platforms: ['twitter'],
-      status: 'draft',
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 6),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 1),
+      platform: 'TWITTER',
+      status: 'DRAFT',
+      scheduledAt: null,
+      publishedAt: null,
+      images: [],
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
+      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 1).toISOString(),
       userId: 'user1',
+      accountId: 'acc1',
+      account: { platform: 'TWITTER', username: '@postpilot', displayName: 'PostPilot' },
     },
     {
       id: '5',
-      content: 'Weekend vibes! What\'s everyone working on? 🌟',
-      platforms: ['twitter', 'facebook'],
-      status: 'published',
-      publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
+      content: "Weekend vibes! What's everyone working on? 🌟",
+      platform: 'FACEBOOK',
+      status: 'PUBLISHED',
+      publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+      scheduledAt: null,
+      images: [],
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
+      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
       userId: 'user1',
-      metrics: {
-        impressions: 5600,
-        likes: 234,
-        comments: 45,
-        shares: 67,
-        clicks: 123,
-        engagementRate: 8.3,
-      },
+      accountId: 'acc4',
+      account: { platform: 'FACEBOOK', username: 'PostPilot', displayName: 'PostPilot' },
+      analytics: [{ id: 'a5', impressions: 5600, likes: 234, comments: 45, shares: 67, clicks: 123, reach: 4200, saves: 18, engagementRate: 8.3, ctr: 2.2, recordedAt: new Date().toISOString() }],
     },
     {
       id: '6',
       content: 'Check out our latest blog post about social media marketing trends in 2025! Link in bio 🔗',
-      platforms: ['linkedin', 'facebook'],
-      status: 'scheduled',
-      scheduledAt: new Date(Date.now() + 1000 * 60 * 60 * 48),
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24),
+      platform: 'LINKEDIN',
+      status: 'SCHEDULED',
+      scheduledAt: new Date(Date.now() + 1000 * 60 * 60 * 48).toISOString(),
+      publishedAt: null,
+      images: [],
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
       userId: 'user1',
+      accountId: 'acc3',
+      account: { platform: 'LINKEDIN', username: 'postpilot', displayName: 'PostPilot' },
     },
   ];
 
   const filterPosts = (posts: Post[]) => {
     let filtered = posts;
 
-    // Filter by status
-    if (activeFilter !== 'all') {
+    if (activeFilter !== 'ALL') {
       filtered = filtered.filter(post => post.status === activeFilter);
     }
 
-    // Filter by search query
     if (searchQuery) {
       filtered = filtered.filter(post =>
         post.content.toLowerCase().includes(searchQuery.toLowerCase())
@@ -124,8 +125,8 @@ const PostsPage = () => {
 
   const filteredPosts = filterPosts(mockPosts);
 
-  const getStatusCount = (status: PostStatus | 'all') => {
-    if (status === 'all') return mockPosts.length;
+  const getStatusCount = (status: PostStatus | 'ALL') => {
+    if (status === 'ALL') return mockPosts.length;
     return mockPosts.filter(post => post.status === status).length;
   };
 
@@ -165,7 +166,7 @@ const PostsPage = () => {
 
           {/* Status Tabs */}
           <div className="flex items-center gap-2 overflow-x-auto">
-            {(['all', 'published', 'scheduled', 'draft', 'failed'] as const).map((status) => (
+            {(['ALL', 'PUBLISHED', 'SCHEDULED', 'DRAFT', 'FAILED'] as const).map((status) => (
               <button
                 key={status}
                 onClick={() => setActiveFilter(status)}
@@ -175,7 +176,7 @@ const PostsPage = () => {
                     : 'bg-[#F3EFEC] text-[#4D4946] hover:bg-[#EAE7E4]'
                 }`}
               >
-                {status.charAt(0).toUpperCase() + status.slice(1)} ({getStatusCount(status)})
+                {status === 'ALL' ? 'All' : status.charAt(0) + status.slice(1).toLowerCase()} ({getStatusCount(status)})
               </button>
             ))}
           </div>
