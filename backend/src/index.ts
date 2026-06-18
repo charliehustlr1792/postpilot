@@ -7,6 +7,7 @@ import socialAccountRoutes from './routes/socialAccountsRoutes';
 import postRoutes from './routes/postRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import scheduleRoutes from './routes/scheduleRoutes'
+import webhookRoutes from './routes/webhookRoutes'
 import {postPublishQueue} from './lib/queue'
 import {processPostPublish} from './jobs/postPublishProcessor'
 import { clerkClient,clerkMiddleware,requireAuth,getAuth } from '@clerk/express';
@@ -15,8 +16,13 @@ import './workers'
 dotenv.config();
 const app = express();
 app.use(cors());
-app.use(express.json());
 app.use(clerkMiddleware());
+
+// Webhooks need the raw request body for signature verification, so they must
+// be registered BEFORE the global JSON body parser.
+app.use('/api', webhookRoutes);
+
+app.use(express.json());
 app.get('/', (req, res) => {
   res.send('PostPilot API running...');
 });

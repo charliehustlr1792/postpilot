@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { createUser,getCurrentUser,updateUser,deleteUser,getUserStats } from "../controllers/userController";
+import { getCurrentUser,updateUser,deleteUser,getUserStats } from "../controllers/userController";
 import { requireAuth } from "@clerk/express";
 const router =Router();
-router.post('/users', createUser);
+// User creation is handled by the Clerk webhook (POST /api/webhooks/clerk),
+// not by a public endpoint. See webhookController.ts.
 router.get('/users/me',requireAuth(), getCurrentUser);
 router.patch('/users/me',requireAuth(),updateUser);
 router.delete('/users/me',requireAuth(),deleteUser)
