@@ -1,3 +1,6 @@
+// Load env vars before any other import runs (queue.ts opens a Redis
+// connection at import time and needs REDIS_URL to be set).
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -15,7 +18,7 @@ import './workers'
 
 dotenv.config();
 const app = express();
-app.use(cors());
+app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 app.use(clerkMiddleware());
 
 // Webhooks need the raw request body for signature verification, so they must

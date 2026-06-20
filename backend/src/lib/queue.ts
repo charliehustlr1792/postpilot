@@ -2,8 +2,12 @@ import {Queue,Worker,Job} from 'bullmq';
 import IORedis from 'ioredis'
 
 //making redis connection
+// BullMQ requires maxRetriesPerRequest to be null on the shared connection,
+// otherwise Workers throw on startup (they rely on blocking commands).
+// Managed providers (Upstash, Railway) hand you a rediss:// URL; ioredis
+// negotiates TLS automatically from the scheme, so no extra config is needed.
 const connection=new IORedis(process.env.REDIS_URL || 'redis://localhost:6379',{
-    maxRetriesPerRequest:3,
+    maxRetriesPerRequest:null,
 })
 
 //create job queues
