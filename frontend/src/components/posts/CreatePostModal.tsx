@@ -2,55 +2,61 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Image as ImageIcon, Calendar as CalendarIcon, Clock, Send, Smile } from 'lucide-react';
-import { Platform } from '@/types/post';
+import Link from 'next/link';
+import { useAuth } from '@clerk/nextjs';
+import { X, Image as ImageIcon, Calendar as CalendarIcon, Clock, Send, Smile, Loader2, AlertCircle } from 'lucide-react';
+import { Platform, Post } from '@/types/post';
 import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import { getCharacterLimit } from '@/lib/utils';
+import { useAccounts } from '@/hooks/useAccounts';
+import { api } from '@/lib/api';
 
 interface CreatePostModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (postData: any) => void;
-  editPost?: any; // For editing existing posts
+  // Called after a post is successfully created (and scheduled, if a date was set).
+  onSave: (post: Post) => void;
+  editPost?: { content?: string; images?: string[] };
 }
 
 const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSave, editPost }) => {
+  const { getToken } = useAuth();
+  const { accounts, isLoading: accountsLoading, error: accountsError } = useAccounts();
+
   const [content, setContent] = useState(editPost?.content || '');
-  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(editPost?.platforms || ['TWITTER']);
-  const [selectedDate, setSelectedDate] = useState(editPost?.scheduledAt || '');
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('14:00');
   const [images, setImages] = useState<string[]>(editPost?.images || []);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-
-  const platforms: { id: Platform; name: string }[] = [
-    { id: 'TWITTER',   name: PLATFORM_LABELS.TWITTER },
-    { id: 'INSTAGRAM', name: PLATFORM_LABELS.INSTAGRAM },
-    { id: 'LINKEDIN',  name: PLATFORM_LABELS.LINKEDIN },
-    { id: 'FACEBOOK',  name: PLATFORM_LABELS.FACEBOOK },
-  ];
+  const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const commonEmojis = ['😊', '🎉', '🚀', '💡', '✨', '👍', '❤️', '🔥', '💪', '🌟', '📱', '💼'];
 
   if (!isOpen) return null;
 
-  const togglePlatform = (platform: Platform) => {
-    if (selectedPlatforms.includes(platform)) {
-      setSelectedPlatforms(selectedPlatforms.filter(p => p !== platform));
-    } else {
-      setSelectedPlatforms([...selectedPlatforms, platform]);
-    }
+  const toggleAccount = (id: string) => {
+    setSelectedAccountIds((prev) =>
+      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id],
+    );
   };
+
+  // Character limit is the strictest among the platforms of the selected accounts.
+  const selectedPlatforms: Platform[] = accounts
+    .filter((a) => selectedAccountIds.includes(a.id))
+    .map((a) => a.platform);
 
   const getMaxCharacters = () => {
     if (selectedPlatforms.length === 0) return 280;
-    return Math.min(...selectedPlatforms.map(p => getCharacterLimit(p)));
+    return Math.min(...selectedPlatforms.map((p) => getCharacterLimit(p)));
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      // Mock image upload - in real app, upload to cloud storage
-      const newImages = Array.from(files).map(file => URL.createObjectURL(file));
+      // Local preview only — real upload to cloud storage lands in 3.13.
+      const newImages = Array.from(files).map((file) => URL.createObjectURL(file));
       setImages([...images, ...newImages]);
     }
   };
@@ -59,19 +65,47 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
     setImages(images.filter((_, i) => i !== index));
   };
 
-  const handleSave = () => {
-    const postData = {
-      content,
-      platforms: selectedPlatforms,
-      scheduledAt: selectedDate ? new Date(`${selectedDate}T${selectedTime}`) : null,
-      images,
-    };
-    onSave(postData);
-  };
-
   const maxChars = getMaxCharacters();
   const charsRemaining = maxChars - content.length;
   const isOverLimit = charsRemaining < 0;
+
+  const canSubmit = content.trim().length > 0 && selectedAccountIds.length > 0 && !isOverLimit && !saving;
+
+  const handleSubmit = async (mode: 'draft' | 'schedule') => {
+    setSubmitError(null);
+
+    const scheduledAt =
+      mode === 'schedule' && selectedDate
+        ? new Date(`${selectedDate}T${selectedTime}`).toISOString()
+        : undefined;
+
+    if (mode === 'schedule' && scheduledAt && new Date(scheduledAt) <= new Date()) {
+      setSubmitError('Scheduled time must be in the future.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const token = await getToken();
+      const { post } = await api.createPost(
+        { content, images, socialAccountIds: selectedAccountIds, scheduledAt },
+        token,
+      );
+
+      // createPost already marks the targets SCHEDULED; this enqueues the jobs.
+      if (scheduledAt) {
+        await api.schedulePost(post.id, { scheduledAt }, token);
+      }
+
+      onSave(post);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to save post');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const hasAccounts = accounts.length > 0;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
@@ -79,9 +113,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[#EAE7E4]">
           <div>
-            <h2 className="text-xl font-bold text-[#181817]">
-              {editPost ? 'Edit Post' : 'Create New Post'}
-            </h2>
+            <h2 className="text-xl font-bold text-[#181817]">Create New Post</h2>
             <p className="text-[#4D4946] text-sm mt-1">
               Share your content across multiple platforms
             </p>
@@ -96,34 +128,64 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Platform Selection */}
+          {/* Account Selection */}
           <div>
             <label className="block text-[#181817] font-semibold text-sm mb-3">
-              Select Platforms
+              Select Accounts
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {platforms.map((platform) => (
-                <button
-                  key={platform.id}
-                  onClick={() => togglePlatform(platform.id)}
-                  className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 ${
-                    selectedPlatforms.includes(platform.id)
-                      ? 'border-[#FF9B4F] bg-[#FF9B4F]/5'
-                      : 'border-[#EAE7E4] hover:border-[#FFD4B2]'
-                  }`}
+
+            {accountsLoading ? (
+              <div className="flex items-center gap-2 text-[#4D4946] text-sm p-3">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading your connected accounts...
+              </div>
+            ) : accountsError ? (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {accountsError}
+              </div>
+            ) : !hasAccounts ? (
+              <div className="border-2 border-dashed border-[#EAE7E4] rounded-xl p-6 text-center">
+                <p className="text-[#4D4946] text-sm mb-3">
+                  You haven&apos;t connected any social accounts yet.
+                </p>
+                <Link
+                  href="/accounts"
+                  className="inline-block px-5 py-2 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all"
                 >
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold"
-                    style={{ backgroundColor: PLATFORM_COLORS[platform.id] }}
+                  Connect an account
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {accounts.map((account) => (
+                  <button
+                    key={account.id}
+                    onClick={() => toggleAccount(account.id)}
+                    className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 text-left ${
+                      selectedAccountIds.includes(account.id)
+                        ? 'border-[#FF9B4F] bg-[#FF9B4F]/5'
+                        : 'border-[#EAE7E4] hover:border-[#FFD4B2]'
+                    }`}
                   >
-                    {/* {PLATFORM_ICONS[platform.id]} */}
-                  </div>
-                  <span className="text-sm font-medium text-[#181817]">
-                    {platform.name}
-                  </span>
-                </button>
-              ))}
-            </div>
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0"
+                      style={{ backgroundColor: PLATFORM_COLORS[account.platform] }}
+                    >
+                      {PLATFORM_LABELS[account.platform].charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="block text-sm font-medium text-[#181817] truncate">
+                        {PLATFORM_LABELS[account.platform]}
+                      </span>
+                      <span className="block text-xs text-[#4D4946]/70 truncate">
+                        @{account.username}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Content Input */}
@@ -145,8 +207,8 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
                 placeholder="What's on your mind?"
                 rows={6}
                 className={`w-full p-4 border-2 rounded-xl text-[#181817] placeholder-[#4D4946]/40 focus:outline-none transition-colors resize-none ${
-                  isOverLimit 
-                    ? 'border-red-300 focus:border-red-500' 
+                  isOverLimit
+                    ? 'border-red-300 focus:border-red-500'
                     : 'border-[#EAE7E4] focus:border-[#FF9B4F]'
                 }`}
               />
@@ -256,6 +318,14 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
               </p>
             )}
           </div>
+
+          {/* Submit error */}
+          {submitError && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {submitError}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -268,22 +338,20 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
           </button>
           <div className="flex gap-3">
             <button
-              onClick={() => {
-                // Save as draft
-                handleSave();
-              }}
-              disabled={!content.trim() || selectedPlatforms.length === 0}
+              onClick={() => handleSubmit('draft')}
+              disabled={!canSubmit}
               className="px-6 py-2.5 bg-white border-2 border-[#EAE7E4] text-[#4D4946] font-semibold rounded-lg hover:border-[#FF9B4F] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Save Draft
             </button>
             <button
-              onClick={handleSave}
-              disabled={!content.trim() || selectedPlatforms.length === 0 || isOverLimit}
+              onClick={() => handleSubmit('schedule')}
+              disabled={!canSubmit || !selectedDate}
+              title={!selectedDate ? 'Pick a date and time to schedule' : undefined}
               className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-semibold rounded-lg hover:shadow-[0_6px_20px_rgba(255,155,79,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Send className="w-4 h-4" />
-              {selectedDate ? 'Schedule Post' : 'Publish Now'}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {saving ? 'Saving...' : 'Schedule Post'}
             </button>
           </div>
         </div>
