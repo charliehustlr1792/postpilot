@@ -1,50 +1,134 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Eye, Heart, Share2, TrendingUp, TrendingDown, Download, ArrowUpRight } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { Eye, Heart, Share2, TrendingUp, Download, ArrowUpRight, Loader2, AlertCircle } from 'lucide-react';
 import {  PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { PLATFORM_COLORS} from '@/lib/constants';
+import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import { formatNumber } from '@/lib/utils';
+import { api, AnalyticsOverviewResponse, AnalyticsTrendsResponse } from '@/lib/api';
+import { Post, Platform, postPlatforms } from '@/types/post';
+
+type TimeRange = '7d' | '30d' | '90d' | 'all';
+
+const DAYS_FOR: Record<TimeRange, number> = {
+  '7d': 7,
+  '30d': 30,
+  '90d': 90,
+  all: 36500,
+};
+
+// Aggregate a post's latest analytics across all of its targets.
+function aggregatePost(post: Post) {
+  return post.targets.reduce(
+    (acc, t) => {
+      const a = t.analytics?.[0];
+      if (a) {
+        acc.impressions += a.impressions;
+        acc.likes += a.likes;
+        acc.comments += a.comments;
+        acc.shares += a.shares;
+      }
+      return acc;
+    },
+    { impressions: 0, likes: 0, comments: 0, shares: 0 },
+  );
+}
 
 const AnalyticsPage = () => {
-  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
+  const { getToken } = useAuth();
+  const [timeRange, setTimeRange] = useState<TimeRange>('30d');
   const [selectedMetric, setSelectedMetric] = useState<'impressions' | 'engagement' | 'clicks'>('impressions');
 
-  // Mock data - replace with real API data
-  const overviewStats = {
-    totalImpressions: 125400,
-    totalEngagement: 8234,
-    totalClicks: 4567,
-    totalShares: 1823,
-    impressionsChange: 22.5,
-    engagementChange: 15.3,
-    clicksChange: -3.2,
-    sharesChange: 8.7,
-  };
+  const [overview, setOverview] = useState<AnalyticsOverviewResponse['overview'] | null>(null);
+  const [topPosts, setTopPosts] = useState<Post[]>([]);
+  const [trends, setTrends] = useState<AnalyticsTrendsResponse['trends']>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const engagementData = [
-    { date: 'Jan 1', impressions: 12000, engagement: 1200, clicks: 450 },
-    { date: 'Jan 5', impressions: 15000, engagement: 1600, clicks: 520 },
-    { date: 'Jan 10', impressions: 18000, engagement: 1900, clicks: 680 },
-    { date: 'Jan 15', impressions: 22000, engagement: 2400, clicks: 890 },
-    { date: 'Jan 20', impressions: 25000, engagement: 2800, clicks: 1020 },
-    { date: 'Jan 25', impressions: 28000, engagement: 3100, clicks: 1150 },
-    { date: 'Jan 30', impressions: 32000, engagement: 3500, clicks: 1340 },
-  ];
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const token = await getToken();
+      const days = DAYS_FOR[timeRange];
+      const [overviewRes, trendsRes] = await Promise.all([
+        api.getAnalyticsOverview({ days }, token),
+        api.getAnalyticsTrends({ days }, token),
+      ]);
+      setOverview(overviewRes.overview);
+      setTopPosts(overviewRes.topPosts);
+      setTrends(trendsRes.trends);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load analytics');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getToken, timeRange]);
 
-  const platformData = [
-    { platform: 'Twitter', value: 35, posts: 45, engagement: 2890 },
-    { platform: 'Instagram', value: 28, posts: 32, engagement: 2340 },
-    { platform: 'LinkedIn', value: 22, posts: 28, engagement: 1850 },
-    { platform: 'Facebook', value: 15, posts: 22, engagement: 1260 },
-  ];
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const topPosts = [
-    { id: '1', content: 'Just launched our new AI-powered analytics dashboard! 🚀', platform: 'TWITTER',   impressions: 15420, likes: 892,  shares: 234, comments: 156, engagementRate: 8.4 },
-    { id: '2', content: 'Behind the scenes of our product development process 📱',   platform: 'INSTAGRAM', impressions: 12680, likes: 1240, shares: 189, comments: 203, engagementRate: 12.9 },
-    { id: '3', content: 'Excited to share our company growth story! 💼',             platform: 'LINKEDIN',  impressions: 9850,  likes: 567,  shares: 145, comments: 89,  engagementRate: 8.1 },
-    { id: '4', content: 'Weekend vibes! What are you working on? 🌟',               platform: 'FACEBOOK',  impressions: 8920,  likes: 423,  shares: 98,  comments: 67,  engagementRate: 6.6 },
-  ];
+  const totalEngagement =
+    (overview?.totalLikes ?? 0) + (overview?.totalShares ?? 0) + (overview?.totalComments ?? 0);
+
+  // Chart series derived from the per-day trend rows.
+  const engagementData = useMemo(
+    () =>
+      trends.map((t) => ({
+        date: new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        impressions: t.impressions,
+        engagement: t.likes + t.shares + t.comments,
+        clicks: t.clicks,
+      })),
+    [trends],
+  );
+
+  // Per-platform distribution. Interim: derived from the top posts' targets until
+  // 2.14 adds a proper per-platform aggregation to the overview endpoint.
+  const platformData = useMemo(() => {
+    const agg = new Map<Platform, { engagement: number; posts: number }>();
+    for (const post of topPosts) {
+      for (const target of post.targets) {
+        const a = target.analytics?.[0];
+        const eng = a ? a.likes + a.shares + a.comments : 0;
+        const cur = agg.get(target.platform) ?? { engagement: 0, posts: 0 };
+        cur.engagement += eng;
+        cur.posts += 1;
+        agg.set(target.platform, cur);
+      }
+    }
+    const total = Array.from(agg.values()).reduce((s, v) => s + v.engagement, 0);
+    return Array.from(agg.entries()).map(([platform, v]) => ({
+      platform: PLATFORM_LABELS[platform],
+      value: total > 0 ? Math.round((v.engagement / total) * 100) : 0,
+      posts: v.posts,
+      engagement: v.engagement,
+    }));
+  }, [topPosts]);
+
+  // Top posts flattened into table rows with aggregated metrics.
+  const topPostRows = useMemo(
+    () =>
+      topPosts.map((post) => {
+        const m = aggregatePost(post);
+        const engagement = m.likes + m.shares + m.comments;
+        const engagementRate = m.impressions > 0 ? (engagement / m.impressions) * 100 : 0;
+        const platforms = postPlatforms(post);
+        return {
+          id: post.id,
+          content: post.content,
+          platforms,
+          impressions: m.impressions,
+          likes: m.likes,
+          comments: m.comments,
+          shares: m.shares,
+          engagementRate,
+        };
+      }),
+    [topPosts],
+  );
 
   const COLORS = ['#FF6E00', '#FF9B4F', '#FFB67D', '#FFD4B2'];
 
@@ -106,71 +190,37 @@ const AnalyticsPage = () => {
         </div>
       </div>
 
+      {/* Error banner */}
+      {error && (
+        <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+          <span className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            {error}
+          </span>
+          <button onClick={() => load()} className="font-semibold underline">
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Overview Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-[#EAE7E4] p-6 hover:border-[#FF9B4F] hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF9B4F]/10 to-[#FF6E00]/10 flex items-center justify-center">
-              <Eye className="w-6 h-6 text-[#FF6E00]" />
+        {[
+          { label: 'Total Impressions', icon: Eye, value: overview?.totalImpressions ?? 0 },
+          { label: 'Total Engagement', icon: Heart, value: totalEngagement },
+          { label: 'Total Clicks', icon: ArrowUpRight, value: overview?.totalClicks ?? 0 },
+          { label: 'Total Shares', icon: Share2, value: overview?.totalShares ?? 0 },
+        ].map(({ label, icon: Icon, value }) => (
+          <div key={label} className="bg-white rounded-xl border border-[#EAE7E4] p-6 hover:border-[#FF9B4F] hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF9B4F]/10 to-[#FF6E00]/10 flex items-center justify-center">
+                <Icon className="w-6 h-6 text-[#FF6E00]" />
+              </div>
             </div>
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-              overviewStats.impressionsChange > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-            }`}>
-              {overviewStats.impressionsChange > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-              {Math.abs(overviewStats.impressionsChange)}%
-            </div>
+            <p className="text-[#4D4946] text-sm font-medium mb-1">{label}</p>
+            <p className="text-[#181817] text-3xl font-bold">{isLoading ? '—' : formatNumber(value)}</p>
           </div>
-          <p className="text-[#4D4946] text-sm font-medium mb-1">Total Impressions</p>
-          <p className="text-[#181817] text-3xl font-bold">{formatNumber(overviewStats.totalImpressions)}</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-[#EAE7E4] p-6 hover:border-[#FF9B4F] hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF9B4F]/10 to-[#FF6E00]/10 flex items-center justify-center">
-              <Heart className="w-6 h-6 text-[#FF6E00]" />
-            </div>
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-              overviewStats.engagementChange > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-            }`}>
-              {overviewStats.engagementChange > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-              {Math.abs(overviewStats.engagementChange)}%
-            </div>
-          </div>
-          <p className="text-[#4D4946] text-sm font-medium mb-1">Total Engagement</p>
-          <p className="text-[#181817] text-3xl font-bold">{formatNumber(overviewStats.totalEngagement)}</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-[#EAE7E4] p-6 hover:border-[#FF9B4F] hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF9B4F]/10 to-[#FF6E00]/10 flex items-center justify-center">
-              <ArrowUpRight className="w-6 h-6 text-[#FF6E00]" />
-            </div>
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-              overviewStats.clicksChange > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-            }`}>
-              {overviewStats.clicksChange > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-              {Math.abs(overviewStats.clicksChange)}%
-            </div>
-          </div>
-          <p className="text-[#4D4946] text-sm font-medium mb-1">Total Clicks</p>
-          <p className="text-[#181817] text-3xl font-bold">{formatNumber(overviewStats.totalClicks)}</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-[#EAE7E4] p-6 hover:border-[#FF9B4F] hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF9B4F]/10 to-[#FF6E00]/10 flex items-center justify-center">
-              <Share2 className="w-6 h-6 text-[#FF6E00]" />
-            </div>
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-              overviewStats.sharesChange > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-            }`}>
-              {overviewStats.sharesChange > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-              {Math.abs(overviewStats.sharesChange)}%
-            </div>
-          </div>
-          <p className="text-[#4D4946] text-sm font-medium mb-1">Total Shares</p>
-          <p className="text-[#181817] text-3xl font-bold">{formatNumber(overviewStats.totalShares)}</p>
-        </div>
+        ))}
       </div>
 
       {/* Main Charts */}
@@ -291,40 +341,52 @@ const AnalyticsPage = () => {
               </tr>
             </thead>
             <tbody>
-              {topPosts.map((post) => (
-                <tr key={post.id} className="border-b border-[#EAE7E4] hover:bg-[#F3EFEC] transition-colors">
-                  <td className="py-4 px-4">
-                    <p className="text-[#181817] text-sm font-medium line-clamp-1">{post.content}</p>
-                  </td>
-                  <td className="py-4 px-4">
-                    <span
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-white text-xs font-medium"
-                      style={{ backgroundColor: PLATFORM_COLORS[post.platform as keyof typeof PLATFORM_COLORS] }}
-                    >
-                      {/* {PLATFORM_ICONS[post.platform as keyof typeof PLATFORM_ICONS]} */}
-                      <span className="capitalize">{post.platform}</span>
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 text-right text-[#181817] text-sm font-medium">
-                    {formatNumber(post.impressions)}
-                  </td>
-                  <td className="py-4 px-4 text-right text-[#181817] text-sm font-medium">
-                    {formatNumber(post.likes)}
-                  </td>
-                  <td className="py-4 px-4 text-right text-[#181817] text-sm font-medium">
-                    {formatNumber(post.comments)}
-                  </td>
-                  <td className="py-4 px-4 text-right text-[#181817] text-sm font-medium">
-                    {formatNumber(post.shares)}
-                  </td>
-                  <td className="py-4 px-4 text-right">
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 text-green-600 text-xs font-medium">
-                      <TrendingUp className="w-3 h-3" />
-                      {post.engagementRate}%
-                    </span>
+              {topPostRows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-[#4D4946]/60 text-sm">
+                    {isLoading ? 'Loading...' : 'No published posts with analytics in this period yet.'}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                topPostRows.map((post) => (
+                  <tr key={post.id} className="border-b border-[#EAE7E4] hover:bg-[#F3EFEC] transition-colors">
+                    <td className="py-4 px-4">
+                      <p className="text-[#181817] text-sm font-medium line-clamp-1">{post.content}</p>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex flex-wrap gap-1">
+                        {post.platforms.map((p) => (
+                          <span
+                            key={p}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-white text-xs font-medium"
+                            style={{ backgroundColor: PLATFORM_COLORS[p] }}
+                          >
+                            {PLATFORM_LABELS[p]}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 text-right text-[#181817] text-sm font-medium">
+                      {formatNumber(post.impressions)}
+                    </td>
+                    <td className="py-4 px-4 text-right text-[#181817] text-sm font-medium">
+                      {formatNumber(post.likes)}
+                    </td>
+                    <td className="py-4 px-4 text-right text-[#181817] text-sm font-medium">
+                      {formatNumber(post.comments)}
+                    </td>
+                    <td className="py-4 px-4 text-right text-[#181817] text-sm font-medium">
+                      {formatNumber(post.shares)}
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 text-green-600 text-xs font-medium">
+                        <TrendingUp className="w-3 h-3" />
+                        {post.engagementRate.toFixed(1)}%
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

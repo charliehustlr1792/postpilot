@@ -181,7 +181,9 @@ export interface PostsQueryParams {
 }
 
 export interface AnalyticsQueryParams {
-  days?: 7 | 30 | 90;
+  // Number of days to look back. The backend just does Number(days), so any
+  // window works; the UI uses 7 / 30 / 90 and a large value for "all time".
+  days?: number;
 }
 
 // ---------------------------------------------------------------------------
