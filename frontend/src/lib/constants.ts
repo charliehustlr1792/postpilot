@@ -1,4 +1,12 @@
 import type { Platform, PostStatus } from '@/types/post';
+import { Twitter, Instagram, Linkedin, Facebook, type LucideIcon } from 'lucide-react';
+
+export const PLATFORM_ICONS: Record<Platform, LucideIcon> = {
+  TWITTER:   Twitter,
+  INSTAGRAM: Instagram,
+  LINKEDIN:  Linkedin,
+  FACEBOOK:  Facebook,
+} as const;
 
 export const PLATFORM_COLORS: Record<Platform, string> = {
   TWITTER:   '#181817',

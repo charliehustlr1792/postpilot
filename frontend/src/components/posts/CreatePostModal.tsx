@@ -4,12 +4,14 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@clerk/nextjs';
+import { toast } from 'sonner';
 import { X, Image as ImageIcon, Calendar as CalendarIcon, Clock, Send, Smile, Loader2, AlertCircle } from 'lucide-react';
 import { Platform, Post } from '@/types/post';
 import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import { getCharacterLimit } from '@/lib/utils';
 import { useAccounts } from '@/hooks/useAccounts';
 import { api } from '@/lib/api';
+import { PlatformIcon } from '@/components/ui/PlatformIcon';
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -30,7 +32,6 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
   const [images, setImages] = useState<string[]>(editPost?.images || []);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const commonEmojis = ['😊', '🎉', '🚀', '💡', '✨', '👍', '❤️', '🔥', '💪', '🌟', '📱', '💼'];
 
@@ -72,15 +73,13 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
   const canSubmit = content.trim().length > 0 && selectedAccountIds.length > 0 && !isOverLimit && !saving;
 
   const handleSubmit = async (mode: 'draft' | 'schedule') => {
-    setSubmitError(null);
-
     const scheduledAt =
       mode === 'schedule' && selectedDate
         ? new Date(`${selectedDate}T${selectedTime}`).toISOString()
         : undefined;
 
     if (mode === 'schedule' && scheduledAt && new Date(scheduledAt) <= new Date()) {
-      setSubmitError('Scheduled time must be in the future.');
+      toast.error('Scheduled time must be in the future.');
       return;
     }
 
@@ -97,9 +96,10 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
         await api.schedulePost(post.id, { scheduledAt }, token);
       }
 
+      toast.success(scheduledAt ? 'Post scheduled' : 'Draft saved');
       onSave(post);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to save post');
+      toast.error(err instanceof Error ? err.message : 'Failed to save post');
     } finally {
       setSaving(false);
     }
@@ -169,10 +169,10 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
                     }`}
                   >
                     <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0"
                       style={{ backgroundColor: PLATFORM_COLORS[account.platform] }}
                     >
-                      {PLATFORM_LABELS[account.platform].charAt(0)}
+                      <PlatformIcon platform={account.platform} className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
                       <span className="block text-sm font-medium text-[#181817] truncate">
@@ -319,13 +319,6 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
             )}
           </div>
 
-          {/* Submit error */}
-          {submitError && (
-            <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              {submitError}
-            </div>
-          )}
         </div>
 
         {/* Footer */}

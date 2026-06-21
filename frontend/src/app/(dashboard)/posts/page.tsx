@@ -2,19 +2,21 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Search, Grid3x3, List, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Search, Grid3x3, List } from 'lucide-react';
+import { toast } from 'sonner';
 import PostCard from '@/components/dashboard/PostCard';
 import CreatePostModal from '@/components/posts/CreatePostModal';
 //import PostFilters from '@/components/posts/PostFilters';
 import { Post, PostStatus } from '@/types/post';
 import { usePosts } from '@/hooks/usePosts';
+import { PostCardSkeleton } from '@/components/ui/Skeleton';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 const PostsPage = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<PostStatus | 'ALL'>('ALL');
-  const [actionError, setActionError] = useState<string | null>(null);
   //const [showFilters, setShowFilters] = useState(false);
 
   // Real data from the backend (Model B: each post carries its own targets[]).
@@ -48,20 +50,20 @@ const PostsPage = () => {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this post and all of its targets? This cannot be undone.')) return;
-    setActionError(null);
     try {
       await deletePost(id);
+      toast.success('Post deleted');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to delete post');
+      toast.error(err instanceof Error ? err.message : 'Failed to delete post');
     }
   };
 
   const handleDuplicate = async (id: string) => {
-    setActionError(null);
     try {
       await duplicatePost(id);
+      toast.success('Post duplicated');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to duplicate post');
+      toast.error(err instanceof Error ? err.message : 'Failed to duplicate post');
     }
   };
 
@@ -142,34 +144,21 @@ const PostsPage = () => {
         </div>
       </div>
 
-      {/* Action error (delete/duplicate) — full error UI comes in 2.10/2.11 */}
-      {actionError && (
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          {actionError}
-        </div>
-      )}
-
       {/* Posts Grid/List */}
       {isLoading ? (
-        <div className="bg-white rounded-xl border border-[#EAE7E4] p-12 flex flex-col items-center justify-center text-[#4D4946]">
-          <Loader2 className="w-8 h-8 animate-spin text-[#FF6E00] mb-3" />
-          <p className="text-sm">Loading posts...</p>
+        <div
+          className={
+            viewMode === 'grid'
+              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+              : 'space-y-4'
+          }
+        >
+          {Array.from({ length: 6 }).map((_, i) => (
+            <PostCardSkeleton key={i} />
+          ))}
         </div>
       ) : error ? (
-        <div className="bg-white rounded-xl border border-[#EAE7E4] p-12 text-center">
-          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-8 h-8 text-red-500" />
-          </div>
-          <h3 className="text-[#181817] font-semibold text-lg mb-2">Couldn&apos;t load posts</h3>
-          <p className="text-[#4D4946]/70 text-sm mb-6">{error}</p>
-          <button
-            onClick={() => refetch()}
-            className="px-6 py-2.5 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-semibold rounded-lg hover:shadow-lg transition-all"
-          >
-            Try again
-          </button>
-        </div>
+        <ErrorState title="Couldn't load posts" message={error} onRetry={refetch} />
       ) : filteredPosts.length === 0 ? (
         <div className="bg-white rounded-xl border border-[#EAE7E4] p-12 text-center">
           <div className="w-16 h-16 bg-[#F3EFEC] rounded-full flex items-center justify-center mx-auto mb-4">

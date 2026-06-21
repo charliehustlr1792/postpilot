@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import { FileText, Eye, Heart, Clock, TrendingUp, AlertCircle } from 'lucide-react';
+import { FileText, Eye, Heart, Clock, TrendingUp } from 'lucide-react';
 import StatCard from '@/components/dashboard/StatCard';
 import QuickActions from '@/components/dashboard/QuickActions';
 import RecentActivity from '@/components/dashboard/RecentActivity';
@@ -10,6 +10,8 @@ import CalendarPreview from '@/components/dashboard/CalendarPreview';
 import PerformanceChart from '@/components/dashboard/PerformanceChart';
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
+import { StatCardSkeleton } from '@/components/ui/Skeleton';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 interface DashboardStats {
   totalPosts: number;
@@ -51,47 +53,34 @@ const DashboardPage = () => {
     loadStats();
   }, [loadStats]);
 
-  const dash = (v: string | number) => (isLoading ? '—' : v);
-
   return (
     <div className="space-y-6">
-      {/* Stats error */}
-      {error && (
-        <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
-          <span className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            {error}
-          </span>
-          <button onClick={() => loadStats()} className="font-semibold underline">
-            Retry
-          </button>
+      {/* Stats Grid */}
+      {error ? (
+        <ErrorState title="Couldn't load dashboard stats" message={error} onRetry={loadStats} />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+          ) : (
+            <>
+              <StatCard title="Total Posts" value={stats?.totalPosts ?? 0} icon={FileText} />
+              <StatCard title="Total Reach" value={formatNumber(stats?.totalReach ?? 0)} icon={Eye} />
+              <StatCard
+                title="Engagement Rate"
+                value={`${(stats?.engagementRate ?? 0).toFixed(1)}%`}
+                icon={Heart}
+              />
+              <StatCard
+                title="Scheduled Posts"
+                value={stats?.scheduledPosts ?? 0}
+                icon={Clock}
+                subtitle="Upcoming scheduled posts"
+              />
+            </>
+          )}
         </div>
       )}
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Posts"
-          value={dash(stats?.totalPosts ?? 0)}
-          icon={FileText}
-        />
-        <StatCard
-          title="Total Reach"
-          value={dash(formatNumber(stats?.totalReach ?? 0))}
-          icon={Eye}
-        />
-        <StatCard
-          title="Engagement Rate"
-          value={dash(`${(stats?.engagementRate ?? 0).toFixed(1)}%`)}
-          icon={Heart}
-        />
-        <StatCard
-          title="Scheduled Posts"
-          value={dash(stats?.scheduledPosts ?? 0)}
-          icon={Clock}
-          subtitle="Upcoming scheduled posts"
-        />
-      </div>
 
       {/* Quick Actions */}
       <QuickActions />

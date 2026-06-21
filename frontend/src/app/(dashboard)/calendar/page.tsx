@@ -2,11 +2,13 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Eye, Loader2, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Eye, Loader2 } from 'lucide-react';
 import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import CreatePostModal from '@/components/posts/CreatePostModal';
 import { api } from '@/lib/api';
 import { Platform, PostStatus } from '@/types/post';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { PlatformIcon } from '@/components/ui/PlatformIcon';
 
 // One target of a scheduled post, placed on its own day/time.
 // A post whose targets are scheduled at different times shows up on multiple days.
@@ -140,23 +142,13 @@ const CalendarPage = () => {
         </button>
       </div>
 
-      {/* Status banner */}
-      {error ? (
-        <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
-          <span className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            {error}
-          </span>
-          <button onClick={() => loadScheduled()} className="font-semibold underline">
-            Retry
-          </button>
-        </div>
-      ) : isLoading ? (
+      {/* Loading indicator (error is shown in place of the grid below) */}
+      {isLoading && !error && (
         <div className="flex items-center gap-2 text-[#4D4946] text-sm px-1">
           <Loader2 className="w-4 h-4 animate-spin" />
           Loading scheduled posts...
         </div>
-      ) : null}
+      )}
 
       {/* Calendar Controls */}
       <div className="bg-white rounded-xl border border-[#EAE7E4] p-4">
@@ -208,6 +200,9 @@ const CalendarPage = () => {
       </div>
 
       {/* Calendar Grid */}
+      {error ? (
+        <ErrorState title="Couldn't load scheduled posts" message={error} onRetry={loadScheduled} />
+      ) : (
       <div className="bg-white rounded-xl border border-[#EAE7E4] p-6">
         {/* Day Headers */}
         <div className="grid grid-cols-7 gap-2 mb-4">
@@ -288,6 +283,7 @@ const CalendarPage = () => {
           })}
         </div>
       </div>
+      )}
 
       {/* Selected Date Details Sidebar */}
       {selectedDate && (
@@ -328,6 +324,7 @@ const CalendarPage = () => {
                       className="flex items-center gap-2 px-2 py-1 rounded-lg text-white text-xs font-medium"
                       style={{ backgroundColor: PLATFORM_COLORS[post.platform] }}
                     >
+                      <PlatformIcon platform={post.platform} className="w-3 h-3" />
                       <span>{PLATFORM_LABELS[post.platform]}</span>
                     </div>
                     <div className="flex items-center gap-1 text-[#4D4946]/70 text-xs">
@@ -360,6 +357,7 @@ const CalendarPage = () => {
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-white font-medium"
                 style={{ backgroundColor: PLATFORM_COLORS[selectedPost.platform] }}
               >
+                <PlatformIcon platform={selectedPost.platform} className="w-4 h-4" />
                 <span>{PLATFORM_LABELS[selectedPost.platform]}</span>
               </div>
               <button

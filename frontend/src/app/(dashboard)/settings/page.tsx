@@ -1,10 +1,13 @@
 // app/(dashboard)/settings/page.tsx
 'use client';
 
-import React, { useState } from 'react';
-import { User, Bell, Lock, CreditCard, Users, Smartphone, Shield, Trash2, Plus } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { User, Bell, CreditCard, Users, Smartphone, Shield, Trash2, Plus, Loader2 } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
+import { toast } from 'sonner';
 import { PLATFORM_COLORS} from '@/lib/constants';
+import { Platform } from '@/types/post';
+import { PlatformIcon } from '@/components/ui/PlatformIcon';
 
 const SettingsPage = () => {
   const { user } = useUser();
@@ -12,6 +15,35 @@ const SettingsPage = () => {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
   const [marketingEmails, setMarketingEmails] = useState(true);
+
+  // Profile form state.
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Seed the form once Clerk has loaded the user.
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.firstName ?? '');
+      setLastName(user.lastName ?? '');
+    }
+  }, [user]);
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    try {
+      setSavingProfile(true);
+      // Update Clerk (the source of truth for names). Clerk then fires a
+      // user.updated webhook that syncs the change into our DB, so there is a
+      // single writer and the DB can't be reverted by a later Clerk event.
+      await user.update({ firstName: firstName.trim(), lastName: lastName.trim() });
+      toast.success('Profile saved');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
@@ -76,7 +108,8 @@ const SettingsPage = () => {
                   <label className="block text-[#4D4946] text-sm font-medium mb-2">First Name</label>
                   <input
                     type="text"
-                    defaultValue={user?.firstName || ''}
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
                     className="w-full px-4 py-2 border border-[#EAE7E4] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF9B4F] focus:border-transparent"
                   />
                 </div>
@@ -84,7 +117,8 @@ const SettingsPage = () => {
                   <label className="block text-[#4D4946] text-sm font-medium mb-2">Last Name</label>
                   <input
                     type="text"
-                    defaultValue={user?.lastName || ''}
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
                     className="w-full px-4 py-2 border border-[#EAE7E4] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF9B4F] focus:border-transparent"
                   />
                 </div>
@@ -92,22 +126,21 @@ const SettingsPage = () => {
                   <label className="block text-[#4D4946] text-sm font-medium mb-2">Email</label>
                   <input
                     type="email"
-                    defaultValue={user?.primaryEmailAddress?.emailAddress || ''}
-                    className="w-full px-4 py-2 border border-[#EAE7E4] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF9B4F] focus:border-transparent"
+                    value={user?.primaryEmailAddress?.emailAddress || ''}
+                    disabled
+                    className="w-full px-4 py-2 border border-[#EAE7E4] rounded-lg bg-[#F3EFEC]/50 text-[#4D4946] cursor-not-allowed focus:outline-none"
                   />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-[#4D4946] text-sm font-medium mb-2">Bio</label>
-                  <textarea
-                    rows={3}
-                    placeholder="Tell us about yourself..."
-                    className="w-full px-4 py-2 border border-[#EAE7E4] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF9B4F] focus:border-transparent resize-none"
-                  />
+                  <p className="text-[#4D4946]/60 text-xs mt-1.5">Email is managed through your sign-in provider</p>
                 </div>
               </div>
-              <div className="flex justify-end mt-6">
-                <button className="px-6 py-2 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-semibold rounded-lg hover:shadow-lg transition-all">
-                  Save Changes
+              <div className="flex items-center justify-end gap-3 mt-6">
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={savingProfile}
+                  className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-semibold rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingProfile && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {savingProfile ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </div>
@@ -128,10 +161,10 @@ const SettingsPage = () => {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-bold"
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
                         style={{ backgroundColor: PLATFORM_COLORS[account.platform as keyof typeof PLATFORM_COLORS] }}
                       >
-                        {/* {PLATFORM_ICONS[account.platform as keyof typeof PLATFORM_ICONS]} */}
+                        <PlatformIcon platform={account.platform as Platform} className="w-6 h-6" />
                       </div>
                       <div>
                         <h3 className="text-[#181817] font-semibold capitalize">{account.platform}</h3>
