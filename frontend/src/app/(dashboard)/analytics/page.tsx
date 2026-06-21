@@ -2,13 +2,14 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import { Eye, Heart, Share2, TrendingUp, Download, ArrowUpRight, Loader2, AlertCircle } from 'lucide-react';
+import { Eye, Heart, Share2, TrendingUp, Download, ArrowUpRight } from 'lucide-react';
 import {  PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import { formatNumber } from '@/lib/utils';
 import { api, AnalyticsOverviewResponse, AnalyticsTrendsResponse } from '@/lib/api';
 import { Post, Platform, postPlatforms } from '@/types/post';
 import { Skeleton, StatCardSkeleton, TableRowSkeleton } from '@/components/ui/Skeleton';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 type TimeRange = '7d' | '30d' | '90d' | 'all';
 
@@ -191,19 +192,10 @@ const AnalyticsPage = () => {
         </div>
       </div>
 
-      {/* Error banner */}
-      {error && (
-        <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
-          <span className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            {error}
-          </span>
-          <button onClick={() => load()} className="font-semibold underline">
-            Retry
-          </button>
-        </div>
-      )}
-
+      {error ? (
+        <ErrorState title="Couldn't load analytics" message={error} onRetry={load} />
+      ) : (
+       <>
       {/* Overview Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {isLoading
@@ -404,6 +396,8 @@ const AnalyticsPage = () => {
           </table>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 };

@@ -7,6 +7,7 @@ import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import { Platform } from '@/types/post';
 import { api } from '@/lib/api';
 import { useAccounts } from '@/hooks/useAccounts';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 const PLATFORMS: Platform[] = ['TWITTER', 'INSTAGRAM', 'LINKEDIN', 'FACEBOOK'];
 
@@ -106,6 +107,9 @@ const AccountsPage = () => {
       )}
 
       {/* Connected Accounts */}
+      {error ? (
+        <ErrorState title="Couldn't load your accounts" message={error} onRetry={refetch} />
+      ) : (
       <div className="bg-white rounded-xl border border-[#EAE7E4] p-6">
         <h2 className="text-lg font-bold text-[#181817] mb-1">Connected Accounts</h2>
         <p className="text-[#4D4946] text-sm mb-5">Accounts available when creating a post</p>
@@ -114,16 +118,6 @@ const AccountsPage = () => {
           <div className="flex items-center gap-2 text-[#4D4946] text-sm py-6">
             <Loader2 className="w-4 h-4 animate-spin" />
             Loading accounts...
-          </div>
-        ) : error ? (
-          <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
-            <span className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              {error}
-            </span>
-            <button onClick={() => refetch()} className="font-semibold underline">
-              Retry
-            </button>
           </div>
         ) : accounts.length === 0 ? (
           <div className="border-2 border-dashed border-[#EAE7E4] rounded-xl p-8 text-center">
@@ -168,6 +162,7 @@ const AccountsPage = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* Add an account */}
       <div className="bg-white rounded-xl border border-[#EAE7E4] p-6">

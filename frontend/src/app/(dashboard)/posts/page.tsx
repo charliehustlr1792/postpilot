@@ -9,6 +9,7 @@ import CreatePostModal from '@/components/posts/CreatePostModal';
 import { Post, PostStatus } from '@/types/post';
 import { usePosts } from '@/hooks/usePosts';
 import { PostCardSkeleton } from '@/components/ui/Skeleton';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 const PostsPage = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -165,19 +166,7 @@ const PostsPage = () => {
           ))}
         </div>
       ) : error ? (
-        <div className="bg-white rounded-xl border border-[#EAE7E4] p-12 text-center">
-          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-8 h-8 text-red-500" />
-          </div>
-          <h3 className="text-[#181817] font-semibold text-lg mb-2">Couldn&apos;t load posts</h3>
-          <p className="text-[#4D4946]/70 text-sm mb-6">{error}</p>
-          <button
-            onClick={() => refetch()}
-            className="px-6 py-2.5 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-semibold rounded-lg hover:shadow-lg transition-all"
-          >
-            Try again
-          </button>
-        </div>
+        <ErrorState title="Couldn't load posts" message={error} onRetry={refetch} />
       ) : filteredPosts.length === 0 ? (
         <div className="bg-white rounded-xl border border-[#EAE7E4] p-12 text-center">
           <div className="w-16 h-16 bg-[#F3EFEC] rounded-full flex items-center justify-center mx-auto mb-4">
