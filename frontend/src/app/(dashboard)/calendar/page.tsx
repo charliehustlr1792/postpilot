@@ -1,37 +1,77 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Eye } from 'lucide-react';
-import { PLATFORM_COLORS} from '@/lib/constants';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Eye, Loader2, AlertCircle } from 'lucide-react';
+import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import CreatePostModal from '@/components/posts/CreatePostModal';
+import { api } from '@/lib/api';
+import { Platform, PostStatus } from '@/types/post';
 
-import { Platform } from '@/types/post';
-
-interface ScheduledPost {
-  id: string;
+// One target of a scheduled post, placed on its own day/time.
+// A post whose targets are scheduled at different times shows up on multiple days.
+interface CalendarEntry {
+  id: string; // target id
+  postId: string;
   content: string;
   platform: Platform;
-  date: string; // YYYY-MM-DD
-  time: string; // HH:MM
-  status: 'SCHEDULED' | 'PUBLISHED';
+  scheduledAt: Date;
+  status: PostStatus;
 }
 
+// Local-date key (YYYY-MM-DD) so grouping matches the locally-built grid cells.
+const dayKey = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const formatTime = (d: Date) =>
+  d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+
 const CalendarPage = () => {
+  const { getToken } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [selectedPost, setSelectedPost] = useState<ScheduledPost | null>(null);
+  const [selectedPost, setSelectedPost] = useState<CalendarEntry | null>(null);
 
-  // Mock scheduled posts — replace with real API data in Sprint 2.
-  const scheduledPosts: ScheduledPost[] = [
-    { id: '1', content: 'Just launched our new AI-powered analytics dashboard! 🚀 #tech', platform: 'TWITTER',   date: '2026-06-20', time: '14:30', status: 'SCHEDULED' },
-    { id: '2', content: 'Behind the scenes of our product development process 📱',       platform: 'INSTAGRAM', date: '2026-06-21', time: '18:00', status: 'SCHEDULED' },
-    { id: '3', content: 'Excited to share our company growth story! 💼',                platform: 'LINKEDIN',  date: '2026-06-21', time: '09:00', status: 'SCHEDULED' },
-    { id: '4', content: 'Weekend vibes! What are you working on? 🌟',                   platform: 'FACEBOOK',  date: '2026-06-23', time: '16:00', status: 'SCHEDULED' },
-    { id: '5', content: 'New blog post about social media trends 📝',                   platform: 'LINKEDIN',  date: '2026-06-25', time: '12:00', status: 'SCHEDULED' },
-    { id: '6', content: 'Check out our latest product update! 🎉',                      platform: 'TWITTER',   date: '2026-06-27', time: '15:00', status: 'SCHEDULED' },
-  ];
+  const [entries, setEntries] = useState<CalendarEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadScheduled = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const token = await getToken();
+      const { posts } = await api.getScheduledPosts(token);
+      // Flatten to one entry per scheduled target.
+      const flat: CalendarEntry[] = [];
+      for (const post of posts) {
+        for (const target of post.targets) {
+          if (target.status === 'SCHEDULED' && target.scheduledAt) {
+            flat.push({
+              id: target.id,
+              postId: post.id,
+              content: post.content,
+              platform: target.platform,
+              scheduledAt: new Date(target.scheduledAt),
+              status: target.status,
+            });
+          }
+        }
+      }
+      setEntries(flat);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load scheduled posts');
+      setEntries([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getToken]);
+
+  useEffect(() => {
+    loadScheduled();
+  }, [loadScheduled]);
 
   const today = new Date();
   const year = currentDate.getFullYear();
@@ -56,10 +96,22 @@ const CalendarPage = () => {
     currentDay.setDate(currentDay.getDate() + 1);
   }
 
-  const getPostsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return scheduledPosts.filter(post => post.date === dateStr);
-  };
+  // Index entries by local day for O(1) lookups, sorted by time within a day.
+  const entriesByDay = useMemo(() => {
+    const map = new Map<string, CalendarEntry[]>();
+    for (const e of entries) {
+      const key = dayKey(e.scheduledAt);
+      const list = map.get(key) ?? [];
+      list.push(e);
+      map.set(key, list);
+    }
+    for (const list of map.values()) {
+      list.sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
+    }
+    return map;
+  }, [entries]);
+
+  const getPostsForDate = (date: Date) => entriesByDay.get(dayKey(date)) ?? [];
 
   const navigateMonth = (direction: number) => {
     setCurrentDate(new Date(year, month + direction, 1));
@@ -87,6 +139,24 @@ const CalendarPage = () => {
           Schedule Post
         </button>
       </div>
+
+      {/* Status banner */}
+      {error ? (
+        <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+          <span className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            {error}
+          </span>
+          <button onClick={() => loadScheduled()} className="font-semibold underline">
+            Retry
+          </button>
+        </div>
+      ) : isLoading ? (
+        <div className="flex items-center gap-2 text-[#4D4946] text-sm px-1">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Loading scheduled posts...
+        </div>
+      ) : null}
 
       {/* Calendar Controls */}
       <div className="bg-white rounded-xl border border-[#EAE7E4] p-4">
@@ -196,12 +266,11 @@ const CalendarPage = () => {
                         setSelectedPost(post);
                       }}
                       className="group p-2 rounded-lg text-white text-xs font-medium truncate transition-all hover:scale-105 cursor-pointer"
-                      style={{ backgroundColor: PLATFORM_COLORS[post.platform as keyof typeof PLATFORM_COLORS] }}
+                      style={{ backgroundColor: PLATFORM_COLORS[post.platform] }}
                     >
                       <div className="flex items-center gap-1">
-                        {/* <span>{PLATFORM_ICONS[post.platform as keyof typeof PLATFORM_ICONS]}</span> */}
                         <Clock className="w-3 h-3" />
-                        <span>{post.time}</span>
+                        <span>{formatTime(post.scheduledAt)}</span>
                       </div>
                       <p className="truncate mt-1 opacity-90 group-hover:opacity-100">
                         {post.content}
@@ -257,14 +326,13 @@ const CalendarPage = () => {
                   <div className="flex items-center justify-between mb-2">
                     <div
                       className="flex items-center gap-2 px-2 py-1 rounded-lg text-white text-xs font-medium"
-                      style={{ backgroundColor: PLATFORM_COLORS[post.platform as keyof typeof PLATFORM_COLORS] }}
+                      style={{ backgroundColor: PLATFORM_COLORS[post.platform] }}
                     >
-                      {/* <span>{PLATFORM_ICONS[post.platform as keyof typeof PLATFORM_ICONS]}</span> */}
-                      <span>{post.platform}</span>
+                      <span>{PLATFORM_LABELS[post.platform]}</span>
                     </div>
                     <div className="flex items-center gap-1 text-[#4D4946]/70 text-xs">
                       <Clock className="w-3 h-3" />
-                      {post.time}
+                      {formatTime(post.scheduledAt)}
                     </div>
                   </div>
                   <p className="text-[#181817] text-sm line-clamp-2">
@@ -290,10 +358,9 @@ const CalendarPage = () => {
             <div className="flex items-center justify-between mb-4">
               <div
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-white font-medium"
-                style={{ backgroundColor: PLATFORM_COLORS[selectedPost.platform as keyof typeof PLATFORM_COLORS] }}
+                style={{ backgroundColor: PLATFORM_COLORS[selectedPost.platform] }}
               >
-                {/* <span>{PLATFORM_ICONS[selectedPost.platform as keyof typeof PLATFORM_ICONS]}</span> */}
-                <span>{selectedPost.platform}</span>
+                <span>{PLATFORM_LABELS[selectedPost.platform]}</span>
               </div>
               <button
                 onClick={() => setSelectedPost(null)}
@@ -307,7 +374,7 @@ const CalendarPage = () => {
               <div>
                 <p className="text-[#4D4946] text-xs font-medium mb-1">Scheduled for</p>
                 <p className="text-[#181817] font-semibold">
-                  {new Date(selectedPost.date + 'T' + selectedPost.time).toLocaleString('en-US', {
+                  {selectedPost.scheduledAt.toLocaleString('en-US', {
                     month: 'long',
                     day: 'numeric',
                     year: 'numeric',
@@ -342,9 +409,9 @@ const CalendarPage = () => {
       <CreatePostModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onSave={(postData) => {
-          console.log('Schedule post:', postData);
+        onSave={() => {
           setIsCreateModalOpen(false);
+          loadScheduled();
         }}
       />
     </div>
