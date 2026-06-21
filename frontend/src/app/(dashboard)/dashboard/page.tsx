@@ -1,49 +1,95 @@
 'use client';
 
-import React from 'react';
-import { FileText, Eye, Heart, Clock, TrendingUp } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { FileText, Eye, Heart, Clock, TrendingUp, AlertCircle } from 'lucide-react';
 import StatCard from '@/components/dashboard/StatCard';
 import QuickActions from '@/components/dashboard/QuickActions';
 import RecentActivity from '@/components/dashboard/RecentActivity';
 import CalendarPreview from '@/components/dashboard/CalendarPreview';
 import PerformanceChart from '@/components/dashboard/PerformanceChart';
+import { api } from '@/lib/api';
+import { formatNumber } from '@/lib/utils';
+
+interface DashboardStats {
+  totalPosts: number;
+  totalReach: number;
+  engagementRate: number;
+  scheduledPosts: number;
+}
 
 const DashboardPage = () => {
-  // Mock data - replace with real data from your API
-  const stats = {
-    totalPosts: 127,
-    totalReach: '45.2K',
-    engagementRate: '8.4%',
-    scheduledPosts: 12,
-  };
+  const { getToken } = useAuth();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadStats = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const token = await getToken();
+      const [userStats, overview, scheduled] = await Promise.all([
+        api.getMyStats(token),
+        api.getAnalyticsOverview({}, token),
+        api.getScheduledPosts(token),
+      ]);
+      setStats({
+        totalPosts: userStats.stats.totalPosts,
+        totalReach: overview.overview.totalReach,
+        engagementRate: overview.overview.avgEngagementRate,
+        scheduledPosts: scheduled.posts.length,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard stats');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getToken]);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  const dash = (v: string | number) => (isLoading ? '—' : v);
 
   return (
     <div className="space-y-6">
+      {/* Stats error */}
+      {error && (
+        <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+          <span className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            {error}
+          </span>
+          <button onClick={() => loadStats()} className="font-semibold underline">
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Posts"
-          value={stats.totalPosts}
+          value={dash(stats?.totalPosts ?? 0)}
           icon={FileText}
-          change={{ value: '+12%', trend: 'up' }}
         />
         <StatCard
           title="Total Reach"
-          value={stats.totalReach}
+          value={dash(formatNumber(stats?.totalReach ?? 0))}
           icon={Eye}
-          change={{ value: '+18%', trend: 'up' }}
         />
         <StatCard
           title="Engagement Rate"
-          value={stats.engagementRate}
+          value={dash(`${(stats?.engagementRate ?? 0).toFixed(1)}%`)}
           icon={Heart}
-          change={{ value: '+5%', trend: 'up' }}
         />
         <StatCard
           title="Scheduled Posts"
-          value={stats.scheduledPosts}
+          value={dash(stats?.scheduledPosts ?? 0)}
           icon={Clock}
-          subtitle="Next: Today at 2:30 PM"
+          subtitle="Upcoming scheduled posts"
         />
       </div>
 

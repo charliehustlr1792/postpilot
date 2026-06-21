@@ -214,9 +214,9 @@ const PostsPage = () => {
       <CreatePostModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onSave={(postData) => {
-          console.log('Save post:', postData);
+        onSave={() => {
           setIsCreateModalOpen(false);
+          refetch();
         }}
       />
     </div>
