@@ -2,139 +2,28 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Search, Grid3x3, List } from 'lucide-react';
+import { Plus, Search, Grid3x3, List, Loader2, AlertCircle } from 'lucide-react';
 import PostCard from '@/components/dashboard/PostCard';
 import CreatePostModal from '@/components/posts/CreatePostModal';
 //import PostFilters from '@/components/posts/PostFilters';
-import { Post, PostTarget, Platform, PostStatus } from '@/types/post';
+import { Post, PostStatus } from '@/types/post';
+import { usePosts } from '@/hooks/usePosts';
 
 const PostsPage = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<PostStatus | 'ALL'>('ALL');
+  const [actionError, setActionError] = useState<string | null>(null);
   //const [showFilters, setShowFilters] = useState(false);
 
-  // Mock posts data — replace with real API data in Sprint 2.
-  // Shape matches the backend API response exactly: a Post fans out to one
-  // PostTarget per platform, each with its own status / schedule / analytics.
-  const mockPosts: Post[] = React.useMemo(() => {
-    const now = Date.now();
-    const iso = (msAgo: number) => new Date(now - msAgo).toISOString();
-    const isoIn = (msAhead: number) => new Date(now + msAhead).toISOString();
+  // Real data from the backend (Model B: each post carries its own targets[]).
+  // Status/search filtering stays client-side here so the tab counts stay accurate;
+  // a high limit keeps the whole list on one page for now (pagination UI is later).
+  const { posts, isLoading, error, refetch, deletePost, duplicatePost } = usePosts({ limit: 100 });
 
-    let targetSeq = 0;
-    const mkTarget = (
-      postId: string,
-      platform: Platform,
-      status: PostStatus,
-      opts: {
-        scheduledAt?: string | null;
-        publishedAt?: string | null;
-        username?: string;
-        analytics?: PostTarget['analytics'];
-      } = {},
-    ): PostTarget => {
-      const id = `t${++targetSeq}`;
-      return {
-        id,
-        platform,
-        status,
-        scheduledAt: opts.scheduledAt ?? null,
-        publishedAt: opts.publishedAt ?? null,
-        platformPostId: status === 'PUBLISHED' ? `${platform.toLowerCase()}_${id}` : null,
-        url: null,
-        error: null,
-        createdAt: iso(1000 * 60 * 60 * 24),
-        updatedAt: iso(1000 * 60 * 60),
-        postId,
-        accountId: `acc-${platform}`,
-        account: { id: `acc-${platform}`, platform, username: opts.username ?? 'postpilot', displayName: 'PostPilot' },
-        analytics: opts.analytics,
-      };
-    };
-
-    const a = (impressions: number, likes: number, comments: number, shares: number): PostTarget['analytics'] => [
-      { id: `an${++targetSeq}`, impressions, likes, comments, shares, clicks: Math.round(impressions * 0.04), reach: Math.round(impressions * 0.8), saves: Math.round(likes * 0.1), engagementRate: 8, ctr: 2.5, recordedAt: iso(0) },
-    ];
-
-    return [
-      {
-        id: '1',
-        content: 'Just launched our new AI-powered analytics dashboard! 🚀 Check it out and let us know what you think. #tech #analytics #AI',
-        images: ['https://images.unsplash.com/photo-1551650975-87deedd944c3?w=400'],
-        createdAt: iso(1000 * 60 * 60 * 24 * 2),
-        updatedAt: iso(1000 * 60 * 60 * 2),
-        userId: 'user1',
-        targets: [
-          mkTarget('1', 'TWITTER', 'PUBLISHED', { publishedAt: iso(1000 * 60 * 60 * 2), username: '@postpilot', analytics: a(2450, 89, 12, 23) }),
-          mkTarget('1', 'LINKEDIN', 'PUBLISHED', { publishedAt: iso(1000 * 60 * 60 * 2), analytics: a(1800, 64, 9, 14) }),
-        ],
-      },
-      {
-        id: '2',
-        content: 'Behind the scenes of our product development process. Swipe to see more! 📱 #startup #productdev',
-        images: ['https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400'],
-        createdAt: iso(1000 * 60 * 60 * 24 * 3),
-        updatedAt: iso(1000 * 60 * 60 * 5),
-        userId: 'user1',
-        targets: [
-          mkTarget('2', 'INSTAGRAM', 'PUBLISHED', { publishedAt: iso(1000 * 60 * 60 * 5), analytics: a(3200, 156, 28, 45) }),
-          mkTarget('2', 'FACEBOOK', 'PUBLISHED', { publishedAt: iso(1000 * 60 * 60 * 5), analytics: a(1500, 70, 11, 19) }),
-        ],
-      },
-      {
-        id: '3',
-        content: 'Exciting news coming next week! Stay tuned 👀 #announcement',
-        images: [],
-        createdAt: iso(1000 * 60 * 60 * 12),
-        updatedAt: iso(1000 * 60 * 60 * 12),
-        userId: 'user1',
-        targets: [
-          mkTarget('3', 'TWITTER', 'SCHEDULED', { scheduledAt: isoIn(1000 * 60 * 60 * 24), username: '@postpilot' }),
-          mkTarget('3', 'INSTAGRAM', 'SCHEDULED', { scheduledAt: isoIn(1000 * 60 * 60 * 24) }),
-          mkTarget('3', 'LINKEDIN', 'SCHEDULED', { scheduledAt: isoIn(1000 * 60 * 60 * 24) }),
-        ],
-      },
-      {
-        id: '4',
-        content: 'Working on something amazing. Draft post to refine later.',
-        images: [],
-        createdAt: iso(1000 * 60 * 60 * 6),
-        updatedAt: iso(1000 * 60 * 60 * 1),
-        userId: 'user1',
-        targets: [mkTarget('4', 'TWITTER', 'DRAFT', { username: '@postpilot' })],
-      },
-      {
-        id: '5',
-        content: "Weekend vibes! What's everyone working on? 🌟",
-        images: [],
-        createdAt: iso(1000 * 60 * 60 * 24 * 3),
-        updatedAt: iso(1000 * 60 * 60 * 24 * 2),
-        userId: 'user1',
-        targets: [
-          mkTarget('5', 'TWITTER', 'PUBLISHED', { publishedAt: iso(1000 * 60 * 60 * 24 * 2), username: '@postpilot', analytics: a(5600, 234, 45, 67) }),
-          // One target failed independently — demonstrates the Model B value.
-          mkTarget('5', 'FACEBOOK', 'FAILED'),
-        ],
-      },
-      {
-        id: '6',
-        content: 'Check out our latest blog post about social media marketing trends in 2025! Link in bio 🔗',
-        images: [],
-        createdAt: iso(1000 * 60 * 60 * 24),
-        updatedAt: iso(1000 * 60 * 60 * 24),
-        userId: 'user1',
-        targets: [
-          mkTarget('6', 'LINKEDIN', 'SCHEDULED', { scheduledAt: isoIn(1000 * 60 * 60 * 48) }),
-          mkTarget('6', 'FACEBOOK', 'SCHEDULED', { scheduledAt: isoIn(1000 * 60 * 60 * 48) }),
-        ],
-      },
-    ];
-  }, []);
-
-  const filterPosts = (posts: Post[]) => {
-    let filtered = posts;
+  const filterPosts = (list: Post[]) => {
+    let filtered = list;
 
     // A post matches a status filter if any of its targets has that status.
     if (activeFilter !== 'ALL') {
@@ -150,11 +39,30 @@ const PostsPage = () => {
     return filtered;
   };
 
-  const filteredPosts = filterPosts(mockPosts);
+  const filteredPosts = filterPosts(posts);
 
   const getStatusCount = (status: PostStatus | 'ALL') => {
-    if (status === 'ALL') return mockPosts.length;
-    return mockPosts.filter(post => post.targets.some(t => t.status === status)).length;
+    if (status === 'ALL') return posts.length;
+    return posts.filter(post => post.targets.some(t => t.status === status)).length;
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Delete this post and all of its targets? This cannot be undone.')) return;
+    setActionError(null);
+    try {
+      await deletePost(id);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to delete post');
+    }
+  };
+
+  const handleDuplicate = async (id: string) => {
+    setActionError(null);
+    try {
+      await duplicatePost(id);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to duplicate post');
+    }
   };
 
   return (
@@ -234,8 +142,35 @@ const PostsPage = () => {
         </div>
       </div>
 
+      {/* Action error (delete/duplicate) — full error UI comes in 2.10/2.11 */}
+      {actionError && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {actionError}
+        </div>
+      )}
+
       {/* Posts Grid/List */}
-      {filteredPosts.length === 0 ? (
+      {isLoading ? (
+        <div className="bg-white rounded-xl border border-[#EAE7E4] p-12 flex flex-col items-center justify-center text-[#4D4946]">
+          <Loader2 className="w-8 h-8 animate-spin text-[#FF6E00] mb-3" />
+          <p className="text-sm">Loading posts...</p>
+        </div>
+      ) : error ? (
+        <div className="bg-white rounded-xl border border-[#EAE7E4] p-12 text-center">
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-500" />
+          </div>
+          <h3 className="text-[#181817] font-semibold text-lg mb-2">Couldn&apos;t load posts</h3>
+          <p className="text-[#4D4946]/70 text-sm mb-6">{error}</p>
+          <button
+            onClick={() => refetch()}
+            className="px-6 py-2.5 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-semibold rounded-lg hover:shadow-lg transition-all"
+          >
+            Try again
+          </button>
+        </div>
+      ) : filteredPosts.length === 0 ? (
         <div className="bg-white rounded-xl border border-[#EAE7E4] p-12 text-center">
           <div className="w-16 h-16 bg-[#F3EFEC] rounded-full flex items-center justify-center mx-auto mb-4">
             <Plus className="w-8 h-8 text-[#4D4946]/40" />
@@ -266,9 +201,10 @@ const PostsPage = () => {
               key={post.id}
               post={post}
               viewMode={viewMode}
+              // Edit reuses CreatePostModal in 2.3 (no edit UI yet).
               onEdit={() => console.log('Edit post:', post.id)}
-              onDelete={() => console.log('Delete post:', post.id)}
-              onDuplicate={() => console.log('Duplicate post:', post.id)}
+              onDelete={() => handleDelete(post.id)}
+              onDuplicate={() => handleDuplicate(post.id)}
             />
           ))}
         </div>
