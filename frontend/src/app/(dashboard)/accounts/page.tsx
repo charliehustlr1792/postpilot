@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import { Plus, X, Trash2, Loader2, AlertCircle, Link2 } from 'lucide-react';
+import { Plus, X, Trash2, Loader2, Link2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import { Platform } from '@/types/post';
 import { api } from '@/lib/api';
@@ -24,7 +25,6 @@ const AccountsPage = () => {
   const { getToken } = useAuth();
   const { accounts, isLoading, error, refetch } = useAccounts();
 
-  const [actionError, setActionError] = useState<string | null>(null);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
 
   // Connect modal (manual add — real OAuth lands in Sprint 3).
@@ -33,21 +33,19 @@ const AccountsPage = () => {
   const [displayName, setDisplayName] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [modalError, setModalError] = useState<string | null>(null);
 
   const openConnect = (platform: Platform) => {
     setConnectPlatform(platform);
     setUsername('');
     setDisplayName('');
     setAccessToken('');
-    setModalError(null);
   };
 
   const closeConnect = () => setConnectPlatform(null);
 
   const handleConnect = async () => {
     if (!connectPlatform) return;
-    setModalError(null);
+    const platformLabel = PLATFORM_LABELS[connectPlatform];
     try {
       setSubmitting(true);
       const token = await getToken();
@@ -62,8 +60,9 @@ const AccountsPage = () => {
       );
       closeConnect();
       await refetch();
+      toast.success(`${platformLabel} account connected`);
     } catch (err) {
-      setModalError(err instanceof Error ? err.message : 'Failed to connect account');
+      toast.error(err instanceof Error ? err.message : 'Failed to connect account');
     } finally {
       setSubmitting(false);
     }
@@ -71,14 +70,14 @@ const AccountsPage = () => {
 
   const handleDisconnect = async (id: string) => {
     if (!window.confirm('Disconnect this account? Scheduled posts targeting it may fail.')) return;
-    setActionError(null);
     setDisconnectingId(id);
     try {
       const token = await getToken();
       await api.deleteAccount(id, token);
       await refetch();
+      toast.success('Account disconnected');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to disconnect account');
+      toast.error(err instanceof Error ? err.message : 'Failed to disconnect account');
     } finally {
       setDisconnectingId(null);
     }
@@ -97,14 +96,6 @@ const AccountsPage = () => {
           </p>
         </div>
       </div>
-
-      {/* Action error */}
-      {actionError && (
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          {actionError}
-        </div>
-      )}
 
       {/* Connected Accounts */}
       {error ? (
@@ -245,12 +236,6 @@ const AccountsPage = () => {
                 />
               </div>
 
-              {modalError && (
-                <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  {modalError}
-                </div>
-              )}
             </div>
 
             {/* Footer */}

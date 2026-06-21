@@ -2,8 +2,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { User, Bell, CreditCard, Users, Smartphone, Shield, Trash2, Plus, Loader2, Check, AlertCircle } from 'lucide-react';
+import { User, Bell, CreditCard, Users, Smartphone, Shield, Trash2, Plus, Loader2 } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
+import { toast } from 'sonner';
 import { PLATFORM_COLORS} from '@/lib/constants';
 
 const SettingsPage = () => {
@@ -17,8 +18,6 @@ const SettingsPage = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
-  const [profileError, setProfileError] = useState<string | null>(null);
-  const [profileSaved, setProfileSaved] = useState(false);
 
   // Seed the form once Clerk has loaded the user.
   useEffect(() => {
@@ -30,17 +29,15 @@ const SettingsPage = () => {
 
   const handleSaveProfile = async () => {
     if (!user) return;
-    setProfileError(null);
-    setProfileSaved(false);
     try {
       setSavingProfile(true);
       // Update Clerk (the source of truth for names). Clerk then fires a
       // user.updated webhook that syncs the change into our DB, so there is a
       // single writer and the DB can't be reverted by a later Clerk event.
       await user.update({ firstName: firstName.trim(), lastName: lastName.trim() });
-      setProfileSaved(true);
+      toast.success('Profile saved');
     } catch (err) {
-      setProfileError(err instanceof Error ? err.message : 'Failed to save profile');
+      toast.error(err instanceof Error ? err.message : 'Failed to save profile');
     } finally {
       setSavingProfile(false);
     }
@@ -135,18 +132,6 @@ const SettingsPage = () => {
                 </div>
               </div>
               <div className="flex items-center justify-end gap-3 mt-6">
-                {profileError && (
-                  <span className="flex items-center gap-1.5 text-red-600 text-sm">
-                    <AlertCircle className="w-4 h-4" />
-                    {profileError}
-                  </span>
-                )}
-                {profileSaved && !profileError && (
-                  <span className="flex items-center gap-1.5 text-green-600 text-sm">
-                    <Check className="w-4 h-4" />
-                    Saved
-                  </span>
-                )}
                 <button
                   onClick={handleSaveProfile}
                   disabled={savingProfile}

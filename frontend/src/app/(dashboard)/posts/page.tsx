@@ -2,7 +2,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Search, Grid3x3, List, AlertCircle } from 'lucide-react';
+import { Plus, Search, Grid3x3, List } from 'lucide-react';
+import { toast } from 'sonner';
 import PostCard from '@/components/dashboard/PostCard';
 import CreatePostModal from '@/components/posts/CreatePostModal';
 //import PostFilters from '@/components/posts/PostFilters';
@@ -16,7 +17,6 @@ const PostsPage = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<PostStatus | 'ALL'>('ALL');
-  const [actionError, setActionError] = useState<string | null>(null);
   //const [showFilters, setShowFilters] = useState(false);
 
   // Real data from the backend (Model B: each post carries its own targets[]).
@@ -50,20 +50,20 @@ const PostsPage = () => {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this post and all of its targets? This cannot be undone.')) return;
-    setActionError(null);
     try {
       await deletePost(id);
+      toast.success('Post deleted');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to delete post');
+      toast.error(err instanceof Error ? err.message : 'Failed to delete post');
     }
   };
 
   const handleDuplicate = async (id: string) => {
-    setActionError(null);
     try {
       await duplicatePost(id);
+      toast.success('Post duplicated');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to duplicate post');
+      toast.error(err instanceof Error ? err.message : 'Failed to duplicate post');
     }
   };
 
@@ -143,14 +143,6 @@ const PostsPage = () => {
           </div>
         </div>
       </div>
-
-      {/* Action error (delete/duplicate) — full error UI comes in 2.10/2.11 */}
-      {actionError && (
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          {actionError}
-        </div>
-      )}
 
       {/* Posts Grid/List */}
       {isLoading ? (
