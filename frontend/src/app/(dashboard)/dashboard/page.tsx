@@ -10,6 +10,7 @@ import CalendarPreview from '@/components/dashboard/CalendarPreview';
 import PerformanceChart from '@/components/dashboard/PerformanceChart';
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
+import { StatCardSkeleton } from '@/components/ui/Skeleton';
 
 interface DashboardStats {
   totalPosts: number;
@@ -51,8 +52,6 @@ const DashboardPage = () => {
     loadStats();
   }, [loadStats]);
 
-  const dash = (v: string | number) => (isLoading ? '—' : v);
-
   return (
     <div className="space-y-6">
       {/* Stats error */}
@@ -70,27 +69,25 @@ const DashboardPage = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Posts"
-          value={dash(stats?.totalPosts ?? 0)}
-          icon={FileText}
-        />
-        <StatCard
-          title="Total Reach"
-          value={dash(formatNumber(stats?.totalReach ?? 0))}
-          icon={Eye}
-        />
-        <StatCard
-          title="Engagement Rate"
-          value={dash(`${(stats?.engagementRate ?? 0).toFixed(1)}%`)}
-          icon={Heart}
-        />
-        <StatCard
-          title="Scheduled Posts"
-          value={dash(stats?.scheduledPosts ?? 0)}
-          icon={Clock}
-          subtitle="Upcoming scheduled posts"
-        />
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+        ) : (
+          <>
+            <StatCard title="Total Posts" value={stats?.totalPosts ?? 0} icon={FileText} />
+            <StatCard title="Total Reach" value={formatNumber(stats?.totalReach ?? 0)} icon={Eye} />
+            <StatCard
+              title="Engagement Rate"
+              value={`${(stats?.engagementRate ?? 0).toFixed(1)}%`}
+              icon={Heart}
+            />
+            <StatCard
+              title="Scheduled Posts"
+              value={stats?.scheduledPosts ?? 0}
+              icon={Clock}
+              subtitle="Upcoming scheduled posts"
+            />
+          </>
+        )}
       </div>
 
       {/* Quick Actions */}

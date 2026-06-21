@@ -8,6 +8,7 @@ import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import { formatNumber } from '@/lib/utils';
 import { api, AnalyticsOverviewResponse, AnalyticsTrendsResponse } from '@/lib/api';
 import { Post, Platform, postPlatforms } from '@/types/post';
+import { Skeleton, StatCardSkeleton, TableRowSkeleton } from '@/components/ui/Skeleton';
 
 type TimeRange = '7d' | '30d' | '90d' | 'all';
 
@@ -205,22 +206,24 @@ const AnalyticsPage = () => {
 
       {/* Overview Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Impressions', icon: Eye, value: overview?.totalImpressions ?? 0 },
-          { label: 'Total Engagement', icon: Heart, value: totalEngagement },
-          { label: 'Total Clicks', icon: ArrowUpRight, value: overview?.totalClicks ?? 0 },
-          { label: 'Total Shares', icon: Share2, value: overview?.totalShares ?? 0 },
-        ].map(({ label, icon: Icon, value }) => (
-          <div key={label} className="bg-white rounded-xl border border-[#EAE7E4] p-6 hover:border-[#FF9B4F] hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF9B4F]/10 to-[#FF6E00]/10 flex items-center justify-center">
-                <Icon className="w-6 h-6 text-[#FF6E00]" />
+        {isLoading
+          ? Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+          : [
+              { label: 'Total Impressions', icon: Eye, value: overview?.totalImpressions ?? 0 },
+              { label: 'Total Engagement', icon: Heart, value: totalEngagement },
+              { label: 'Total Clicks', icon: ArrowUpRight, value: overview?.totalClicks ?? 0 },
+              { label: 'Total Shares', icon: Share2, value: overview?.totalShares ?? 0 },
+            ].map(({ label, icon: Icon, value }) => (
+              <div key={label} className="bg-white rounded-xl border border-[#EAE7E4] p-6 hover:border-[#FF9B4F] hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF9B4F]/10 to-[#FF6E00]/10 flex items-center justify-center">
+                    <Icon className="w-6 h-6 text-[#FF6E00]" />
+                  </div>
+                </div>
+                <p className="text-[#4D4946] text-sm font-medium mb-1">{label}</p>
+                <p className="text-[#181817] text-3xl font-bold">{formatNumber(value)}</p>
               </div>
-            </div>
-            <p className="text-[#4D4946] text-sm font-medium mb-1">{label}</p>
-            <p className="text-[#181817] text-3xl font-bold">{isLoading ? '—' : formatNumber(value)}</p>
-          </div>
-        ))}
+            ))}
       </div>
 
       {/* Main Charts */}
@@ -250,6 +253,9 @@ const AnalyticsPage = () => {
           </div>
 
           <div className="h-[300px]">
+            {isLoading ? (
+              <Skeleton className="w-full h-full rounded-xl" />
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={engagementData}>
                 <defs>
@@ -272,6 +278,7 @@ const AnalyticsPage = () => {
                 />
               </AreaChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -280,7 +287,10 @@ const AnalyticsPage = () => {
           <h2 className="text-lg font-bold text-[#181817] mb-2">Platform Distribution</h2>
           <p className="text-[#4D4946] text-sm mb-6">Engagement by platform</p>
 
-          <div className="h-[200px] mb-6">
+          <div className="h-[200px] mb-6 flex items-center justify-center">
+            {isLoading ? (
+              <Skeleton className="w-40 h-40 rounded-full" />
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -299,6 +309,7 @@ const AnalyticsPage = () => {
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -341,10 +352,12 @@ const AnalyticsPage = () => {
               </tr>
             </thead>
             <tbody>
-              {topPostRows.length === 0 ? (
+              {isLoading ? (
+                Array.from({ length: 4 }).map((_, i) => <TableRowSkeleton key={i} columns={7} />)
+              ) : topPostRows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-[#4D4946]/60 text-sm">
-                    {isLoading ? 'Loading...' : 'No published posts with analytics in this period yet.'}
+                    No published posts with analytics in this period yet.
                   </td>
                 </tr>
               ) : (

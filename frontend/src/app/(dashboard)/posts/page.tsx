@@ -2,12 +2,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Search, Grid3x3, List, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Search, Grid3x3, List, AlertCircle } from 'lucide-react';
 import PostCard from '@/components/dashboard/PostCard';
 import CreatePostModal from '@/components/posts/CreatePostModal';
 //import PostFilters from '@/components/posts/PostFilters';
 import { Post, PostStatus } from '@/types/post';
 import { usePosts } from '@/hooks/usePosts';
+import { PostCardSkeleton } from '@/components/ui/Skeleton';
 
 const PostsPage = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -152,9 +153,16 @@ const PostsPage = () => {
 
       {/* Posts Grid/List */}
       {isLoading ? (
-        <div className="bg-white rounded-xl border border-[#EAE7E4] p-12 flex flex-col items-center justify-center text-[#4D4946]">
-          <Loader2 className="w-8 h-8 animate-spin text-[#FF6E00] mb-3" />
-          <p className="text-sm">Loading posts...</p>
+        <div
+          className={
+            viewMode === 'grid'
+              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+              : 'space-y-4'
+          }
+        >
+          {Array.from({ length: 6 }).map((_, i) => (
+            <PostCardSkeleton key={i} />
+          ))}
         </div>
       ) : error ? (
         <div className="bg-white rounded-xl border border-[#EAE7E4] p-12 text-center">
