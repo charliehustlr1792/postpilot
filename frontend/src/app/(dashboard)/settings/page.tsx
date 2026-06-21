@@ -6,6 +6,8 @@ import { User, Bell, CreditCard, Users, Smartphone, Shield, Trash2, Plus, Loader
 import { useUser } from '@clerk/nextjs';
 import { toast } from 'sonner';
 import { PLATFORM_COLORS} from '@/lib/constants';
+import { Platform } from '@/types/post';
+import { PlatformIcon } from '@/components/ui/PlatformIcon';
 
 const SettingsPage = () => {
   const { user } = useUser();
@@ -159,10 +161,10 @@ const SettingsPage = () => {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-bold"
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
                         style={{ backgroundColor: PLATFORM_COLORS[account.platform as keyof typeof PLATFORM_COLORS] }}
                       >
-                        {/* {PLATFORM_ICONS[account.platform as keyof typeof PLATFORM_ICONS]} */}
+                        <PlatformIcon platform={account.platform as Platform} className="w-6 h-6" />
                       </div>
                       <div>
                         <h3 className="text-[#181817] font-semibold capitalize">{account.platform}</h3>

@@ -11,6 +11,7 @@ import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import { getCharacterLimit } from '@/lib/utils';
 import { useAccounts } from '@/hooks/useAccounts';
 import { api } from '@/lib/api';
+import { PlatformIcon } from '@/components/ui/PlatformIcon';
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -168,10 +169,10 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
                     }`}
                   >
                     <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0"
                       style={{ backgroundColor: PLATFORM_COLORS[account.platform] }}
                     >
-                      {PLATFORM_LABELS[account.platform].charAt(0)}
+                      <PlatformIcon platform={account.platform} className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
                       <span className="block text-sm font-medium text-[#181817] truncate">

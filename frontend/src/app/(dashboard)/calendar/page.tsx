@@ -8,6 +8,7 @@ import CreatePostModal from '@/components/posts/CreatePostModal';
 import { api } from '@/lib/api';
 import { Platform, PostStatus } from '@/types/post';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { PlatformIcon } from '@/components/ui/PlatformIcon';
 
 // One target of a scheduled post, placed on its own day/time.
 // A post whose targets are scheduled at different times shows up on multiple days.
@@ -323,6 +324,7 @@ const CalendarPage = () => {
                       className="flex items-center gap-2 px-2 py-1 rounded-lg text-white text-xs font-medium"
                       style={{ backgroundColor: PLATFORM_COLORS[post.platform] }}
                     >
+                      <PlatformIcon platform={post.platform} className="w-3 h-3" />
                       <span>{PLATFORM_LABELS[post.platform]}</span>
                     </div>
                     <div className="flex items-center gap-1 text-[#4D4946]/70 text-xs">
@@ -355,6 +357,7 @@ const CalendarPage = () => {
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-white font-medium"
                 style={{ backgroundColor: PLATFORM_COLORS[selectedPost.platform] }}
               >
+                <PlatformIcon platform={selectedPost.platform} className="w-4 h-4" />
                 <span>{PLATFORM_LABELS[selectedPost.platform]}</span>
               </div>
               <button

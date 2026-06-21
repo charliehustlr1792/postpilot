@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Edit3, Trash2, Copy, MoreVertical, Eye, Heart, MessageCircle, Share2 } from 'lucide-react';
 import { Post, postPlatforms, postRollupStatus } from '@/types/post';
 import { PLATFORM_COLORS, PLATFORM_LABELS, POST_STATUS_COLORS, POST_STATUS_LABELS } from '@/lib/constants';
+import { PlatformIcon } from '@/components/ui/PlatformIcon';
 import { formatDateTime, getRelativeTime, formatNumber } from '@/lib/utils';
 
 interface PostCardProps {
@@ -67,9 +68,10 @@ const PostCard: React.FC<PostCardProps> = ({ post, viewMode, onEdit, onDelete, o
       {platforms.map((platform) => (
         <span
           key={platform}
-          className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white"
           style={{ backgroundColor: PLATFORM_COLORS[platform] }}
         >
+          <PlatformIcon platform={platform} className="w-3 h-3" />
           {PLATFORM_LABELS[platform]}
         </span>
       ))}

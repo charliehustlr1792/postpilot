@@ -9,15 +9,16 @@ import { Platform } from '@/types/post';
 import { api } from '@/lib/api';
 import { useAccounts } from '@/hooks/useAccounts';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { PlatformIcon } from '@/components/ui/PlatformIcon';
 
 const PLATFORMS: Platform[] = ['TWITTER', 'INSTAGRAM', 'LINKEDIN', 'FACEBOOK'];
 
 const PlatformBadge = ({ platform, size = 'md' }: { platform: Platform; size?: 'sm' | 'md' }) => (
   <div
-    className={`${size === 'sm' ? 'w-8 h-8 text-xs' : 'w-11 h-11 text-base'} rounded-lg flex items-center justify-center text-white font-bold shrink-0`}
+    className={`${size === 'sm' ? 'w-8 h-8' : 'w-11 h-11'} rounded-lg flex items-center justify-center text-white shrink-0`}
     style={{ backgroundColor: PLATFORM_COLORS[platform] }}
   >
-    {PLATFORM_LABELS[platform].charAt(0)}
+    <PlatformIcon platform={platform} className={size === 'sm' ? 'w-4 h-4' : 'w-5 h-5'} />
   </div>
 );
 

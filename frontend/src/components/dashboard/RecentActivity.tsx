@@ -3,6 +3,8 @@
 import React from 'react';
 import { CheckCircle2, Clock, XCircle, Eye, ArrowRight } from 'lucide-react';
 import { PLATFORM_COLORS } from '@/lib/constants';
+import { Platform } from '@/types/post';
+import { PlatformIcon } from '@/components/ui/PlatformIcon';
 import Link from 'next/link';
 
 interface Activity {
@@ -126,12 +128,12 @@ const RecentActivity = () => {
                 <div className="flex items-center gap-2 mb-2">
                   {/* Platform Badge */}
                   <span
-                    className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
-                    style={{ 
-                      backgroundColor: PLATFORM_COLORS[activity.platform as keyof typeof PLATFORM_COLORS] 
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                    style={{
+                      backgroundColor: PLATFORM_COLORS[activity.platform as keyof typeof PLATFORM_COLORS]
                     }}
                   >
-                  {/* {PLATFORM_ICONS[activity.platform as keyof typeof PLATFORM_ICONS]}{' '} */}
+                    <PlatformIcon platform={activity.platform as Platform} className="w-3 h-3" />
                     {activity.platform.charAt(0).toUpperCase() + activity.platform.slice(1)}
                   </span>
 

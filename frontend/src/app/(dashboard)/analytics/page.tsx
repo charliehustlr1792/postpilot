@@ -10,6 +10,7 @@ import { api, AnalyticsOverviewResponse, AnalyticsTrendsResponse } from '@/lib/a
 import { Post, Platform, postPlatforms } from '@/types/post';
 import { Skeleton, StatCardSkeleton, TableRowSkeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { PlatformIcon } from '@/components/ui/PlatformIcon';
 
 type TimeRange = '7d' | '30d' | '90d' | 'all';
 
@@ -366,6 +367,7 @@ const AnalyticsPage = () => {
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-white text-xs font-medium"
                             style={{ backgroundColor: PLATFORM_COLORS[p] }}
                           >
+                            <PlatformIcon platform={p} className="w-3 h-3" />
                             {PLATFORM_LABELS[p]}
                           </span>
                         ))}
