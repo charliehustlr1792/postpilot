@@ -6,8 +6,8 @@ import { Eye, Heart, Share2, TrendingUp, Download, ArrowUpRight } from 'lucide-r
 import {  PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import { formatNumber } from '@/lib/utils';
-import { api, AnalyticsOverviewResponse, AnalyticsTrendsResponse } from '@/lib/api';
-import { Post, Platform, postPlatforms } from '@/types/post';
+import { api, AnalyticsOverviewResponse, AnalyticsTrendsResponse, PlatformBreakdownItem } from '@/lib/api';
+import { Post, postPlatforms } from '@/types/post';
 import { Skeleton, StatCardSkeleton, TableRowSkeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { PlatformIcon } from '@/components/ui/PlatformIcon';
@@ -45,6 +45,7 @@ const AnalyticsPage = () => {
 
   const [overview, setOverview] = useState<AnalyticsOverviewResponse['overview'] | null>(null);
   const [topPosts, setTopPosts] = useState<Post[]>([]);
+  const [platformBreakdown, setPlatformBreakdown] = useState<PlatformBreakdownItem[]>([]);
   const [trends, setTrends] = useState<AnalyticsTrendsResponse['trends']>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +62,7 @@ const AnalyticsPage = () => {
       ]);
       setOverview(overviewRes.overview);
       setTopPosts(overviewRes.topPosts);
+      setPlatformBreakdown(overviewRes.platformBreakdown);
       setTrends(trendsRes.trends);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load analytics');
@@ -88,28 +90,16 @@ const AnalyticsPage = () => {
     [trends],
   );
 
-  // Per-platform distribution. Interim: derived from the top posts' targets until
-  // 2.14 adds a proper per-platform aggregation to the overview endpoint.
+  // Per-platform engagement distribution, served by the overview endpoint.
   const platformData = useMemo(() => {
-    const agg = new Map<Platform, { engagement: number; posts: number }>();
-    for (const post of topPosts) {
-      for (const target of post.targets) {
-        const a = target.analytics?.[0];
-        const eng = a ? a.likes + a.shares + a.comments : 0;
-        const cur = agg.get(target.platform) ?? { engagement: 0, posts: 0 };
-        cur.engagement += eng;
-        cur.posts += 1;
-        agg.set(target.platform, cur);
-      }
-    }
-    const total = Array.from(agg.values()).reduce((s, v) => s + v.engagement, 0);
-    return Array.from(agg.entries()).map(([platform, v]) => ({
-      platform: PLATFORM_LABELS[platform],
-      value: total > 0 ? Math.round((v.engagement / total) * 100) : 0,
-      posts: v.posts,
-      engagement: v.engagement,
+    const total = platformBreakdown.reduce((s, p) => s + p.engagement, 0);
+    return platformBreakdown.map((p) => ({
+      platform: PLATFORM_LABELS[p.platform],
+      value: total > 0 ? Math.round((p.engagement / total) * 100) : 0,
+      posts: p.posts,
+      engagement: p.engagement,
     }));
-  }, [topPosts]);
+  }, [platformBreakdown]);
 
   // Top posts flattened into table rows with aggregated metrics.
   const topPostRows = useMemo(
