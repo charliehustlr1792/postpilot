@@ -76,10 +76,6 @@ export const createPost = async (req: Request, res: Response) => {
         }
         const { content, images, socialAccountIds, scheduledAt } = req.body;
 
-        if (!content || !Array.isArray(socialAccountIds) || socialAccountIds.length === 0) {
-            return res.status(400).json({ error: "content and a non-empty socialAccountIds array are required" });
-        }
-
         const user = await prisma.user.findUnique({ where: { clerkId: userId } });
         if (!user) {
             return res.status(404).json({ error: "User not found" });

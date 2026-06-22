@@ -39,9 +39,6 @@ export const connectAccount=async(req:Request,res:Response)=>{
             return res.status(401).json({error:"User not authenticated"})
         }
         const {platform,username,displayName,profileImage,accessToken,refreshToken} = req.body;
-        if(!platform || !username || !accessToken){
-            res.status(400).json({error:"Platform, username and access token are required"})
-        }
         const user = await prisma.user.findUnique({
       where: { clerkId: userId }
     });
@@ -89,9 +86,6 @@ export const deleteAccount=async(req:Request,res:Response)=>{
             return res.status(401).json({error:"User not authenticated"})
         }
         const {accountId} = req.params;
-        if(!accountId){
-            return res.status(400).json({error:"Account ID is required"})
-        }
         const account=await prisma.socialAccount.delete({
             where:{
                 id:accountId,
