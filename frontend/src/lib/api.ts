@@ -49,6 +49,20 @@ export interface PostAnalyticsResponse {
   analytics: PostAnalytics[];
 }
 
+// One entry per platform that has analytics in the window.
+export interface PlatformBreakdownItem {
+  platform: Platform;
+  impressions: number;
+  likes: number;
+  shares: number;
+  comments: number;
+  clicks: number;
+  reach: number;
+  saves: number;
+  engagement: number;
+  posts: number;
+}
+
 // GET /api/analytics/overview
 export interface AnalyticsOverviewResponse {
   overview: {
@@ -63,6 +77,7 @@ export interface AnalyticsOverviewResponse {
     avgCTR: number;
   };
   topPosts: Post[];
+  platformBreakdown: PlatformBreakdownItem[];
   dateRange: {
     startDate: string;
     endDate: string;

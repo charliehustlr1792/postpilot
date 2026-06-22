@@ -92,6 +92,73 @@ export const getAnalyticsOverview = async (req: Request, res: Response) => {
             .sort((a, b) => b.totalEngagement - a.totalEngagement)
             .slice(0, 5)
 
+        // Per-platform breakdown: sum every analytics row in the window grouped by
+        // the target's platform, so the pieces add up to the totals above.
+        // Engagement = likes + shares + comments; posts = distinct targets seen.
+        const platformRows = await prisma.analytics.findMany({
+            where: { userId: user.id, recordedAt: { gte: startDate } },
+            select: {
+                postTargetId: true,
+                impressions: true,
+                likes: true,
+                shares: true,
+                comments: true,
+                clicks: true,
+                reach: true,
+                saves: true,
+                postTarget: { select: { platform: true } },
+            },
+        })
+
+        const breakdownMap = new Map<
+            string,
+            {
+                platform: string;
+                impressions: number;
+                likes: number;
+                shares: number;
+                comments: number;
+                clicks: number;
+                reach: number;
+                saves: number;
+                engagement: number;
+                targetIds: Set<string>;
+            }
+        >()
+
+        for (const row of platformRows) {
+            const platform = row.postTarget.platform
+            let entry = breakdownMap.get(platform)
+            if (!entry) {
+                entry = {
+                    platform,
+                    impressions: 0,
+                    likes: 0,
+                    shares: 0,
+                    comments: 0,
+                    clicks: 0,
+                    reach: 0,
+                    saves: 0,
+                    engagement: 0,
+                    targetIds: new Set<string>(),
+                }
+                breakdownMap.set(platform, entry)
+            }
+            entry.impressions += row.impressions
+            entry.likes += row.likes
+            entry.shares += row.shares
+            entry.comments += row.comments
+            entry.clicks += row.clicks
+            entry.reach += row.reach
+            entry.saves += row.saves
+            entry.engagement += row.likes + row.shares + row.comments
+            entry.targetIds.add(row.postTargetId)
+        }
+
+        const platformBreakdown = Array.from(breakdownMap.values()).map(
+            ({ targetIds, ...rest }) => ({ ...rest, posts: targetIds.size })
+        )
+
         res.json({
             overview: {
                 totalImpressions: totalMetrics._sum?.impressions || 0,
@@ -105,6 +172,7 @@ export const getAnalyticsOverview = async (req: Request, res: Response) => {
                 avgCTR: totalMetrics._avg?.ctr || 0,
             },
             topPosts,
+            platformBreakdown,
             dateRange: {
                 startDate,
                 endDate: new Date(),
