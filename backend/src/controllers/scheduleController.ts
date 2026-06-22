@@ -15,10 +15,6 @@ export const schedulePost = async (req: Request, res: Response) => {
             return res.status(401).json({ error: 'Not authenticated' })
         }
 
-        if (!scheduledAt) {
-            return res.status(400).json({ error: 'scheduledAt is required' })
-        }
-
         const scheduledDate = new Date(scheduledAt);
 
         // Fixed: compare the parsed Date, not the raw request string.

@@ -56,9 +56,6 @@ export const updateUser = async (req: Request, res: Response) => {
             return res.status(401).json({ error: "User not authenticated" })
         }
         const { firstName, lastName, avatar } = req.body;
-        if (!firstName || !lastName) {
-            return res.status(400).json({ error: "First name, last nameare required" })
-        }
         const updatedUser = await prisma.user.update({
             where: { clerkId: userId },
             data: {
