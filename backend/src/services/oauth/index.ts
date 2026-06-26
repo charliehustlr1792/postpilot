@@ -1,6 +1,7 @@
 import axios from "axios";
 import { Platform } from "../../types/enums";
 import { OAuthProvider, OAuthProviderConfig, OAuthTokens } from "./types";
+import { twitterProvider } from "./twitter";
 
 export { getProviderConfig } from "./providers";
 
@@ -47,11 +48,6 @@ export async function exchangeAuthorizationCode(
 function profilePending(platform: Platform): never {
     throw new Error(`getProfile for ${platform} is not implemented yet`);
 }
-
-const twitterProvider: OAuthProvider = {
-    exchangeCode: exchangeAuthorizationCode,
-    getProfile: async () => profilePending(Platform.TWITTER),
-};
 
 const linkedinProvider: OAuthProvider = {
     exchangeCode: exchangeAuthorizationCode,
