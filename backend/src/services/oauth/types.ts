@@ -13,6 +13,10 @@ export interface OAuthProfile {
     username: string;
     displayName?: string;
     profileImage?: string;
+    // Some platforms publish with a different, longer-lived token than the one
+    // returned by the code exchange (e.g. a Meta Page access token). When set,
+    // this token is stored instead of the exchange's access token.
+    accessToken?: string;
 }
 
 // Static + env-driven configuration for one platform's OAuth flow.
