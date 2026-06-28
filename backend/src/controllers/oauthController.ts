@@ -99,9 +99,14 @@ export const oauthCallback = async (req: Request, res: Response) => {
             return frontendRedirect(res, { connected: "error", reason: "user_not_found" });
         }
 
-        const tokenExpiry = tokens.expiresIn
-            ? new Date(Date.now() + tokens.expiresIn * 1000)
-            : null;
+        // A provider may publish with a different token than the exchange's
+        // (e.g. a Meta Page token), which carries no separate expiry.
+        const accessToken = profile.accessToken ?? tokens.accessToken;
+        const tokenExpiry =
+            !profile.accessToken && tokens.expiresIn
+                ? new Date(Date.now() + tokens.expiresIn * 1000)
+                : null;
+        const refreshToken = tokens.refreshToken ? encrypt(tokens.refreshToken) : null;
 
         await prisma.socialAccount.upsert({
             where: { userId_platform: { userId: user.id, platform } },
@@ -111,16 +116,16 @@ export const oauthCallback = async (req: Request, res: Response) => {
                 username: profile.username,
                 displayName: profile.displayName,
                 profileImage: profile.profileImage,
-                accessToken: encrypt(tokens.accessToken),
-                refreshToken: tokens.refreshToken ? encrypt(tokens.refreshToken) : null,
+                accessToken: encrypt(accessToken),
+                refreshToken,
                 tokenExpiry,
             },
             update: {
                 username: profile.username,
                 displayName: profile.displayName,
                 profileImage: profile.profileImage,
-                accessToken: encrypt(tokens.accessToken),
-                refreshToken: tokens.refreshToken ? encrypt(tokens.refreshToken) : null,
+                accessToken: encrypt(accessToken),
+                refreshToken,
                 tokenExpiry,
                 isActive: true,
             },
