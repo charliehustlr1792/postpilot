@@ -79,34 +79,78 @@ function formatTwitterError(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown Twitter API error';
 }
 
-// Instagram Publishing
-const publishToInstagram = async (post: PublishablePost): Promise<PublishResult> => {
-  // TODO: Implement Instagram Basic Display API / Instagram Graph API
-  
-  console.log('Publishing to Instagram:', {
-    content: post.content,
-    images: post.images,
-    //hashtags: post.hashtags,
-  });
+// Publishes a single image to an Instagram Business account via the Graph API.
+// Two steps: create a media container from the image URL + caption, then publish
+// that container. Uses the linked Facebook Page's access token (stored at connect
+// time) and the IG Business account id (platformAccountId).
+const GRAPH_API = 'https://graph.facebook.com/v21.0';
 
-  // Instagram requires at least one image
+const publishToInstagram = async (post: PublishablePost): Promise<PublishResult> => {
+  // Instagram requires at least one image, and the image must be a public URL
+  // the Graph API can fetch (not a local blob).
   if (!post.images || post.images.length === 0) {
     throw new Error('Instagram posts require at least one image');
   }
+  const imageUrl = post.images[0];
+  if (!/^https?:\/\//i.test(imageUrl)) {
+    throw new Error('Instagram requires a publicly accessible image URL');
+  }
+  if (!post.account.platformAccountId) {
+    throw new Error('Instagram account is missing its business account id; reconnect the account');
+  }
 
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  if (Math.random() < 0.85) {
+  const igUserId = post.account.platformAccountId;
+  const accessToken = post.account.accessToken;
+
+  try {
+    // Step 1: create the media container.
+    const { data: container } = await axios.post<{ id: string }>(
+      `${GRAPH_API}/${igUserId}/media`,
+      null,
+      {
+        params: {
+          image_url: imageUrl,
+          caption: post.content,
+          access_token: accessToken,
+        },
+      }
+    );
+
+    // Step 2: publish the container.
+    const { data: published } = await axios.post<{ id: string }>(
+      `${GRAPH_API}/${igUserId}/media_publish`,
+      null,
+      {
+        params: {
+          creation_id: container.id,
+          access_token: accessToken,
+        },
+      }
+    );
+
     return {
-      platformPostId: `instagram_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      url: `https://instagram.com/p/ABC123`,
+      platformPostId: published.id,
+      url: `https://www.instagram.com/${post.account.username}`,
       success: true,
-      message: 'Successfully posted to Instagram'
+      message: 'Successfully posted to Instagram',
     };
-  } else {
-    throw new Error('Instagram API error: Invalid media format');
+  } catch (error) {
+    throw new Error(formatGraphError(error, 'Instagram'));
   }
 };
+
+// Turns a Meta Graph API failure into a meaningful, recordable message.
+function formatGraphError(error: unknown, platform: string): string {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status;
+    const apiError = (error.response?.data as { error?: { message?: string; code?: number } } | undefined)?.error;
+    if (apiError?.message) {
+      return `${platform} API error: ${apiError.message}`;
+    }
+    return `${platform} API error${status ? ` (HTTP ${status})` : ''}`;
+  }
+  return error instanceof Error ? error.message : `Unknown ${platform} API error`;
+}
 
 // LinkedIn Publishing
 const publishToLinkedIn = async (post: PublishablePost): Promise<PublishResult> => {

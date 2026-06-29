@@ -36,6 +36,9 @@ model SocialAccount {
   username     String
   displayName  String?
   profileImage String?
+  // Platform-side account id used for publishing (IG Business account id,
+  // Facebook Page id, Twitter user id). Distinct from our internal `id`.
+  platformAccountId String?
   accessToken  String
   refreshToken String?
   tokenExpiry  DateTime?

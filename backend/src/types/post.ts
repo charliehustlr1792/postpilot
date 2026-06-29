@@ -8,6 +8,8 @@ export interface PublishablePost {
     id: string;
     platform: string;
     username: string;
+    // Platform-side account id (IG Business id, FB Page id, etc.), if known.
+    platformAccountId: string | null;
     accessToken: string;
     refreshToken: string | null;
   };
