@@ -2,6 +2,7 @@ import { Job } from 'bullmq'
 import prisma from '../lib/db'
 import { publishPostToSocialMedia } from '../services/socialMediaService'
 import { PostPublishJobData } from '../types/postPublishJobData'
+import { decrypt } from '../lib/crypto'
 
 export const processPostPublish = async (job: Job<PostPublishJobData>) => {
     const { postTargetId } = job.data;
@@ -34,8 +35,11 @@ export const processPostPublish = async (job: Job<PostPublishJobData>) => {
                 id: target.account.id,
                 platform: target.account.platform,
                 username: target.account.username,
-                accessToken: target.account.accessToken,
-                refreshToken: target.account.refreshToken,
+                // Tokens are encrypted at rest; hand the platform services plaintext.
+                accessToken: decrypt(target.account.accessToken),
+                refreshToken: target.account.refreshToken
+                    ? decrypt(target.account.refreshToken)
+                    : null,
             },
         })
 

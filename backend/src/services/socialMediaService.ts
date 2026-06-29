@@ -1,3 +1,4 @@
+import axios from 'axios';
 import prisma from '../lib/db';
 import { PublishablePost } from '../types/post';
 import { PublishResult } from '../types/publishResult';
@@ -18,30 +19,65 @@ export const publishPostToSocialMedia = async (post: PublishablePost): Promise<P
   }
 };
 
+// Posts a tweet via Twitter API v2 using the account's OAuth 2.0 user token.
 const publishToTwitter = async (post: PublishablePost): Promise<PublishResult> => {
-  // TODO: Implement actual Twitter API v2 integration
-  // For now, simulate the API call
-  
-  console.log('Publishing to Twitter:', {
-    content: post.content,
-    images: post.images,
-  });
+  if (post.content.length > 280) {
+    throw new Error('Twitter posts cannot exceed 280 characters');
+  }
+  // Tweeting media requires uploading it first to obtain media_ids (a separate
+  // endpoint that isn't wired up yet), so fail loudly rather than drop images.
+  if (post.images && post.images.length > 0) {
+    throw new Error('Publishing images to Twitter is not supported yet');
+  }
 
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Simulate success/failure (90% success rate)
-  if (Math.random() < 0.9) {
+  try {
+    const { data } = await axios.post<{ data: { id: string; text: string } }>(
+      'https://api.twitter.com/2/tweets',
+      { text: post.content },
+      {
+        headers: {
+          Authorization: `Bearer ${post.account.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const tweetId = data.data.id;
     return {
-      platformPostId: `twitter_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      url: `https://twitter.com/${post.account.username}/status/123456789`,
+      platformPostId: tweetId,
+      url: `https://twitter.com/${post.account.username}/status/${tweetId}`,
       success: true,
-      message: 'Successfully posted to Twitter'
+      message: 'Successfully posted to Twitter',
     };
-  } else {
-    throw new Error('Twitter API rate limit exceeded');
+  } catch (error) {
+    throw new Error(formatTwitterError(error));
   }
 };
+
+// Turns a Twitter API failure into a meaningful, recordable message.
+function formatTwitterError(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status;
+    const data = error.response?.data as
+      | { detail?: string; title?: string; errors?: { message?: string }[] }
+      | undefined;
+    const detail = data?.detail || data?.title || data?.errors?.[0]?.message;
+
+    switch (status) {
+      case 401:
+        return `Twitter authentication failed; the access token is invalid or expired${detail ? `: ${detail}` : ''}`;
+      case 403:
+        return `Twitter rejected the post${detail ? `: ${detail}` : ' (duplicate content or insufficient permissions)'}`;
+      case 429:
+        return 'Twitter API rate limit exceeded; try again later';
+      default:
+        return detail
+          ? `Twitter API error: ${detail}`
+          : `Twitter API error${status ? ` (HTTP ${status})` : ''}`;
+    }
+  }
+  return error instanceof Error ? error.message : 'Unknown Twitter API error';
+}
 
 // Instagram Publishing
 const publishToInstagram = async (post: PublishablePost): Promise<PublishResult> => {

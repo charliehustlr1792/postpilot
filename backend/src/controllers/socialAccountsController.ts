@@ -2,6 +2,7 @@ import prisma from "../lib/db";
 import { Prisma } from "../generated/prisma";
 import { Request,Response } from "express";
 import { getAuth } from "@clerk/express";
+import { encrypt } from "../lib/crypto";
 
 //get all connected soical accounts
 export const getSocialAccounts=async(req:Request,res:Response)=>{
@@ -52,8 +53,9 @@ export const connectAccount=async(req:Request,res:Response)=>{
         username,
         displayName,
         profileImage,
-        accessToken,
-        refreshToken,
+        // Stored encrypted at rest, matching the OAuth connect path.
+        accessToken: encrypt(accessToken),
+        refreshToken: refreshToken ? encrypt(refreshToken) : null,
         userId: user.id
       },
       select: {
