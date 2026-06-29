@@ -183,28 +183,79 @@ function formatGraphError(error: unknown, platform: string): string {
   return error instanceof Error ? error.message : `Unknown ${platform} API error`;
 }
 
-// LinkedIn Publishing
-const publishToLinkedIn = async (post: PublishablePost): Promise<PublishResult> => {
-  // TODO: Implement LinkedIn API integration
-  
-  console.log('Publishing to LinkedIn:', {
-    content: post.content,
-    images: post.images,
-  });
+// Publishes a text post to LinkedIn via the Posts API, authored by the connected
+// member (urn:li:person:{id}) using their w_member_social token.
+const LINKEDIN_VERSION = '202405';
+const LINKEDIN_MAX_CHARS = 3000;
 
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  if (Math.random() < 0.92) {
+const publishToLinkedIn = async (post: PublishablePost): Promise<PublishResult> => {
+  if (post.content.length > LINKEDIN_MAX_CHARS) {
+    throw new Error(`LinkedIn posts cannot exceed ${LINKEDIN_MAX_CHARS} characters`);
+  }
+  // Attaching media requires registering and uploading an image asset first
+  // (a separate flow), so fail loudly rather than drop the images.
+  if (post.images && post.images.length > 0) {
+    throw new Error('Publishing images to LinkedIn is not supported yet');
+  }
+  if (!post.account.platformAccountId) {
+    throw new Error('LinkedIn account is missing its member id; reconnect the account');
+  }
+
+  const authorUrn = `urn:li:person:${post.account.platformAccountId}`;
+
+  try {
+    const response = await axios.post(
+      'https://api.linkedin.com/rest/posts',
+      {
+        author: authorUrn,
+        commentary: post.content,
+        visibility: 'PUBLIC',
+        distribution: {
+          feedDistribution: 'MAIN_FEED',
+          targetEntities: [],
+          thirdPartyDistributionChannels: [],
+        },
+        lifecycleState: 'PUBLISHED',
+        isReshareDisabledByAuthor: false,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${post.account.accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Restli-Protocol-Version': '2.0.0',
+          'LinkedIn-Version': LINKEDIN_VERSION,
+        },
+      }
+    );
+
+    // The created post URN comes back in the x-restli-id response header.
+    const postUrn = response.headers['x-restli-id'] as string | undefined;
     return {
-      platformPostId: `linkedin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      url: `https://linkedin.com/posts/activity-123456789`,
+      platformPostId: postUrn ?? authorUrn,
+      url: postUrn ? `https://www.linkedin.com/feed/update/${postUrn}` : undefined,
       success: true,
-      message: 'Successfully posted to LinkedIn'
+      message: 'Successfully posted to LinkedIn',
     };
-  } else {
-    throw new Error('LinkedIn API error: Content too long');
+  } catch (error) {
+    throw new Error(formatLinkedInError(error));
   }
 };
+
+// Turns a LinkedIn API failure into a meaningful, recordable message.
+function formatLinkedInError(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status;
+    const message = (error.response?.data as { message?: string } | undefined)?.message;
+    if (status === 401) {
+      return `LinkedIn authentication failed; the access token is invalid or expired${message ? `: ${message}` : ''}`;
+    }
+    if (status === 429) {
+      return 'LinkedIn API rate limit exceeded; try again later';
+    }
+    return message ? `LinkedIn API error: ${message}` : `LinkedIn API error${status ? ` (HTTP ${status})` : ''}`;
+  }
+  return error instanceof Error ? error.message : 'Unknown LinkedIn API error';
+}
 
 // Facebook Publishing
 const publishToFacebook = async (post: PublishablePost): Promise<PublishResult> => {
