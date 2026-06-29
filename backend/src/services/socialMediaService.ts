@@ -79,34 +79,109 @@ function formatTwitterError(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown Twitter API error';
 }
 
-// Instagram Publishing
-const publishToInstagram = async (post: PublishablePost): Promise<PublishResult> => {
-  // TODO: Implement Instagram Basic Display API / Instagram Graph API
-  
-  console.log('Publishing to Instagram:', {
-    content: post.content,
-    images: post.images,
-    //hashtags: post.hashtags,
-  });
+// Publishes to an Instagram Business account via the Graph API. A single image
+// is a media container that gets published directly; 2–10 images become a
+// carousel (one child container per image, then a CAROUSEL parent). Uses the
+// linked Facebook Page's access token (stored at connect time) and the IG
+// Business account id (platformAccountId).
+const GRAPH_API = 'https://graph.facebook.com/v21.0';
+const IG_CAROUSEL_MAX = 10;
 
-  // Instagram requires at least one image
+// Creates a media container and returns its id.
+async function createIgContainer(
+  igUserId: string,
+  accessToken: string,
+  params: Record<string, string | boolean>
+): Promise<string> {
+  const { data } = await axios.post<{ id: string }>(
+    `${GRAPH_API}/${igUserId}/media`,
+    null,
+    { params: { ...params, access_token: accessToken } }
+  );
+  return data.id;
+}
+
+const publishToInstagram = async (post: PublishablePost): Promise<PublishResult> => {
+  // Instagram requires at least one image, and every image must be a public URL
+  // the Graph API can fetch (not a local blob).
   if (!post.images || post.images.length === 0) {
     throw new Error('Instagram posts require at least one image');
   }
+  if (post.images.length > IG_CAROUSEL_MAX) {
+    throw new Error(`Instagram posts cannot have more than ${IG_CAROUSEL_MAX} images`);
+  }
+  if (!post.images.every((url) => /^https?:\/\//i.test(url))) {
+    throw new Error('Instagram requires publicly accessible image URLs');
+  }
+  if (!post.account.platformAccountId) {
+    throw new Error('Instagram account is missing its business account id; reconnect the account');
+  }
 
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  if (Math.random() < 0.85) {
+  const igUserId = post.account.platformAccountId;
+  const accessToken = post.account.accessToken;
+
+  try {
+    let creationId: string;
+
+    if (post.images.length === 1) {
+      // Single image: one container carries the caption.
+      creationId = await createIgContainer(igUserId, accessToken, {
+        image_url: post.images[0],
+        caption: post.content,
+      });
+    } else {
+      // Carousel: a child container per image, then a CAROUSEL parent that
+      // holds the caption and references the children.
+      const childIds = await Promise.all(
+        post.images.map((url) =>
+          createIgContainer(igUserId, accessToken, {
+            image_url: url,
+            is_carousel_item: true,
+          })
+        )
+      );
+      creationId = await createIgContainer(igUserId, accessToken, {
+        media_type: 'CAROUSEL',
+        caption: post.content,
+        children: childIds.join(','),
+      });
+    }
+
+    // Publish the (single or carousel) container.
+    const { data: published } = await axios.post<{ id: string }>(
+      `${GRAPH_API}/${igUserId}/media_publish`,
+      null,
+      {
+        params: {
+          creation_id: creationId,
+          access_token: accessToken,
+        },
+      }
+    );
+
     return {
-      platformPostId: `instagram_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      url: `https://instagram.com/p/ABC123`,
+      platformPostId: published.id,
+      url: `https://www.instagram.com/${post.account.username}`,
       success: true,
-      message: 'Successfully posted to Instagram'
+      message: 'Successfully posted to Instagram',
     };
-  } else {
-    throw new Error('Instagram API error: Invalid media format');
+  } catch (error) {
+    throw new Error(formatGraphError(error, 'Instagram'));
   }
 };
+
+// Turns a Meta Graph API failure into a meaningful, recordable message.
+function formatGraphError(error: unknown, platform: string): string {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status;
+    const apiError = (error.response?.data as { error?: { message?: string; code?: number } } | undefined)?.error;
+    if (apiError?.message) {
+      return `${platform} API error: ${apiError.message}`;
+    }
+    return `${platform} API error${status ? ` (HTTP ${status})` : ''}`;
+  }
+  return error instanceof Error ? error.message : `Unknown ${platform} API error`;
+}
 
 // LinkedIn Publishing
 const publishToLinkedIn = async (post: PublishablePost): Promise<PublishResult> => {

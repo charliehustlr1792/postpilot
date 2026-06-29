@@ -35,6 +35,7 @@ export const processPostPublish = async (job: Job<PostPublishJobData>) => {
                 id: target.account.id,
                 platform: target.account.platform,
                 username: target.account.username,
+                platformAccountId: target.account.platformAccountId,
                 // Tokens are encrypted at rest; hand the platform services plaintext.
                 accessToken: decrypt(target.account.accessToken),
                 refreshToken: target.account.refreshToken
