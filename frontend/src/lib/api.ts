@@ -124,6 +124,11 @@ export interface DeleteAccountResponse {
   account: SocialAccount;
 }
 
+// GET /api/accounts/:platform/auth
+export interface OAuthUrlResponse {
+  url: string;
+}
+
 // GET /api/users/me
 export interface UserResponse {
   user: User;
@@ -343,6 +348,16 @@ export const api = {
     return apiFetch<ConnectAccountResponse>(
       '/api/accounts/connect',
       { method: 'POST', body: JSON.stringify(body) },
+      token,
+    );
+  },
+
+  // Starts an OAuth connect: returns the provider consent URL to navigate to.
+  // credentials are included so the backend's signed state cookie is stored.
+  getOAuthUrl(platform: Platform, token?: string | null) {
+    return apiFetch<OAuthUrlResponse>(
+      `/api/accounts/${platform.toLowerCase()}/auth`,
+      { credentials: 'include' },
       token,
     );
   },
