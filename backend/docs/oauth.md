@@ -13,7 +13,10 @@ Two routes per platform, both under `/api/accounts`:
    - For PKCE providers (Twitter) it also generates a `code_verifier` and sends
      the derived `code_challenge`.
    - Stashes `{ state, platform, clerkUserId, codeVerifier? }` in a short-lived,
-     signed, HttpOnly cookie (`pp_oauth_state`), then redirects to the provider.
+     signed, HttpOnly cookie (`pp_oauth_state`), then returns `{ url }` as JSON.
+   - The SPA fetches this with the Clerk bearer token and `credentials: 'include'`
+     (a top-level browser redirect to the backend can't carry the bearer token),
+     then navigates the browser to `url`.
 
 2. `GET /api/accounts/:platform/callback` (unauthenticated)
    - The provider redirects the browser here. This request does **not** carry the

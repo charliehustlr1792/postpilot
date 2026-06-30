@@ -25,7 +25,9 @@ function frontendRedirect(res: Response, params: Record<string, string>) {
 
 // GET /api/accounts/:platform/auth  (authenticated)
 // Builds the provider consent URL, stashes CSRF state + the initiating user in a
-// signed cookie, and redirects the browser to the platform's login screen.
+// signed cookie, and returns the URL as JSON. The SPA then navigates the browser
+// to it (a top-level redirect can't carry the Clerk bearer token, so the client
+// fetches this with credentials and redirects itself).
 export const startOAuth = async (req: Request, res: Response) => {
     const { userId } = getAuth(req);
     if (!userId) {
@@ -63,7 +65,7 @@ export const startOAuth = async (req: Request, res: Response) => {
     }
 
     setOAuthStateCookie(res, { state, platform, clerkUserId: userId, codeVerifier });
-    return res.redirect(`${config.authorizationUrl}?${authParams.toString()}`);
+    return res.json({ url: `${config.authorizationUrl}?${authParams.toString()}` });
 };
 
 // GET /api/accounts/:platform/callback  (unauthenticated; identity comes from

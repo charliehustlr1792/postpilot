@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import { Plus, X, Trash2, Loader2, Link2 } from 'lucide-react';
+import { Plus, Trash2, Loader2, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import { Platform } from '@/types/post';
@@ -12,6 +12,14 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { PlatformIcon } from '@/components/ui/PlatformIcon';
 
 const PLATFORMS: Platform[] = ['TWITTER', 'INSTAGRAM', 'LINKEDIN', 'FACEBOOK'];
+
+// Human-readable copy for the failure reasons the callback can hand back.
+const CONNECT_ERROR_REASONS: Record<string, string> = {
+  invalid_state: 'the request expired or was tampered with — please try again',
+  exchange_failed: "we couldn't complete the sign-in with the provider",
+  user_not_found: 'your account could not be found',
+  access_denied: 'the request was denied on the provider',
+};
 
 const PlatformBadge = ({ platform, size = 'md' }: { platform: Platform; size?: 'sm' | 'md' }) => (
   <div
@@ -27,45 +35,43 @@ const AccountsPage = () => {
   const { accounts, isLoading, error, refetch } = useAccounts();
 
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
+  const [connectingPlatform, setConnectingPlatform] = useState<Platform | null>(null);
 
-  // Connect modal (manual add — real OAuth lands in Sprint 3).
-  const [connectPlatform, setConnectPlatform] = useState<Platform | null>(null);
-  const [username, setUsername] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [accessToken, setAccessToken] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  // Surface the result of the OAuth round-trip (we land back here with a
+  // ?connected=success|error query param), then strip it from the URL.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get('connected');
+    if (!connected) return;
 
-  const openConnect = (platform: Platform) => {
-    setConnectPlatform(platform);
-    setUsername('');
-    setDisplayName('');
-    setAccessToken('');
-  };
+    if (connected === 'success') {
+      const platform = params.get('platform');
+      const label = platform
+        ? PLATFORM_LABELS[platform.toUpperCase() as Platform] ?? 'Account'
+        : 'Account';
+      toast.success(`${label} connected`);
+      refetch();
+    } else {
+      const reason = params.get('reason');
+      const detail = reason ? CONNECT_ERROR_REASONS[reason] ?? reason : '';
+      toast.error(detail ? `Couldn't connect account: ${detail}` : "Couldn't connect account");
+    }
 
-  const closeConnect = () => setConnectPlatform(null);
+    window.history.replaceState({}, '', '/accounts');
+    // Run once on mount; refetch is stable enough for this read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleConnect = async () => {
-    if (!connectPlatform) return;
-    const platformLabel = PLATFORM_LABELS[connectPlatform];
+  const handleConnect = async (platform: Platform) => {
+    setConnectingPlatform(platform);
     try {
-      setSubmitting(true);
       const token = await getToken();
-      await api.connectAccount(
-        {
-          platform: connectPlatform,
-          username: username.trim(),
-          displayName: displayName.trim() || undefined,
-          accessToken: accessToken.trim(),
-        },
-        token,
-      );
-      closeConnect();
-      await refetch();
-      toast.success(`${platformLabel} account connected`);
+      const { url } = await api.getOAuthUrl(platform, token);
+      // Hand off to the provider's consent screen.
+      window.location.href = url;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to connect account');
-    } finally {
-      setSubmitting(false);
+      toast.error(err instanceof Error ? err.message : 'Failed to start connection');
+      setConnectingPlatform(null);
     }
   };
 
@@ -83,8 +89,6 @@ const AccountsPage = () => {
       setDisconnectingId(null);
     }
   };
-
-  const canSubmit = !!username.trim() && !!accessToken.trim() && !submitting;
 
   return (
     <div className="space-y-6">
@@ -160,7 +164,7 @@ const AccountsPage = () => {
       <div className="bg-white rounded-xl border border-[#EAE7E4] p-6">
         <h2 className="text-lg font-bold text-[#181817] mb-1">Add an account</h2>
         <p className="text-[#4D4946] text-sm mb-5">
-          Manual connect for now — full OAuth sign-in arrives in a later release
+          Sign in with the platform to authorize PostPilot to publish on your behalf
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {PLATFORMS.map((platform) => (
@@ -171,94 +175,21 @@ const AccountsPage = () => {
               <PlatformBadge platform={platform} />
               <span className="text-sm font-medium text-[#181817]">{PLATFORM_LABELS[platform]}</span>
               <button
-                onClick={() => openConnect(platform)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white text-sm font-semibold rounded-lg hover:shadow-[0_6px_20px_rgba(255,155,79,0.4)] transition-all"
+                onClick={() => handleConnect(platform)}
+                disabled={connectingPlatform !== null}
+                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white text-sm font-semibold rounded-lg hover:shadow-[0_6px_20px_rgba(255,155,79,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Plus className="w-4 h-4" />
+                {connectingPlatform === platform ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
                 Connect
               </button>
             </div>
           ))}
         </div>
       </div>
-
-      {/* Connect Modal */}
-      {connectPlatform && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
-          onClick={closeConnect}
-        >
-          <div
-            className="bg-white rounded-2xl w-full max-w-md animate-in slide-in-from-bottom duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-[#EAE7E4]">
-              <div className="flex items-center gap-3">
-                <PlatformBadge platform={connectPlatform} size="sm" />
-                <h3 className="text-lg font-bold text-[#181817]">
-                  Connect {PLATFORM_LABELS[connectPlatform]}
-                </h3>
-              </div>
-              <button onClick={closeConnect} className="p-2 hover:bg-[#F3EFEC] rounded-lg transition-colors">
-                <X className="w-5 h-5 text-[#4D4946]" />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-[#181817] font-semibold text-sm mb-1.5">Username</label>
-                <input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="handle without the @"
-                  className="w-full px-4 py-2.5 border-2 border-[#EAE7E4] rounded-xl text-[#181817] focus:outline-none focus:border-[#FF9B4F] transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-[#181817] font-semibold text-sm mb-1.5">
-                  Display name <span className="text-[#4D4946]/50 font-normal">(optional)</span>
-                </label>
-                <input
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Account display name"
-                  className="w-full px-4 py-2.5 border-2 border-[#EAE7E4] rounded-xl text-[#181817] focus:outline-none focus:border-[#FF9B4F] transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-[#181817] font-semibold text-sm mb-1.5">Access token</label>
-                <input
-                  value={accessToken}
-                  onChange={(e) => setAccessToken(e.target.value)}
-                  placeholder="placeholder token (OAuth replaces this)"
-                  className="w-full px-4 py-2.5 border-2 border-[#EAE7E4] rounded-xl text-[#181817] focus:outline-none focus:border-[#FF9B4F] transition-colors"
-                />
-              </div>
-
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-[#EAE7E4] bg-[#F3EFEC]/30">
-              <button
-                onClick={closeConnect}
-                className="px-5 py-2.5 text-[#4D4946] font-medium hover:bg-white rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConnect}
-                disabled={!canSubmit}
-                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-semibold rounded-lg hover:shadow-[0_6px_20px_rgba(255,155,79,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
-                {submitting ? 'Connecting...' : 'Connect'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
