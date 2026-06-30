@@ -1,5 +1,5 @@
 import axios from "axios";
-import { OAuthProvider, OAuthProfile, OAuthTokens } from "./types";
+import { OAuthProvider, OAuthProviderConfig, OAuthProfile, OAuthTokens } from "./types";
 import { exchangeAuthorizationCode } from "./exchange";
 
 // LinkedIn OAuth 2.0. The token exchange is standard (client credentials in the
@@ -31,7 +31,39 @@ async function getProfile(tokens: OAuthTokens): Promise<OAuthProfile> {
     };
 }
 
+// Refresh tokens are issued only to approved LinkedIn apps; when available the
+// exchange is the standard refresh_token grant.
+async function refresh(
+    refreshToken: string,
+    config: OAuthProviderConfig
+): Promise<OAuthTokens> {
+    const body = new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+    });
+
+    const { data } = await axios.post<{
+        access_token: string;
+        refresh_token?: string;
+        expires_in?: number;
+    }>(config.tokenUrl, body.toString(), {
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Accept: "application/json",
+        },
+    });
+
+    return {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        expiresIn: data.expires_in,
+    };
+}
+
 export const linkedinProvider: OAuthProvider = {
     exchangeCode: exchangeAuthorizationCode,
     getProfile,
+    refresh,
 };

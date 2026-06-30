@@ -2,6 +2,10 @@ import axios from 'axios';
 import prisma from '../lib/db';
 import { PublishablePost } from '../types/post';
 import { PublishResult } from '../types/publishResult';
+import { PlatformPublishError } from '../types/publishError';
+import { encrypt, decrypt } from '../lib/crypto';
+import { getOAuthProvider, getProviderConfig } from './oauth';
+import { Platform } from '../types/enums';
 
 export const publishPostToSocialMedia = async (post: PublishablePost): Promise<PublishResult> => {
   try {
@@ -50,12 +54,12 @@ const publishToTwitter = async (post: PublishablePost): Promise<PublishResult> =
       message: 'Successfully posted to Twitter',
     };
   } catch (error) {
-    throw new Error(formatTwitterError(error));
+    throw toTwitterError(error);
   }
 };
 
-// Turns a Twitter API failure into a meaningful, recordable message.
-function formatTwitterError(error: unknown): string {
+// Turns a Twitter API failure into a typed, recordable error.
+function toTwitterError(error: unknown): PlatformPublishError {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
     const data = error.response?.data as
@@ -65,18 +69,25 @@ function formatTwitterError(error: unknown): string {
 
     switch (status) {
       case 401:
-        return `Twitter authentication failed; the access token is invalid or expired${detail ? `: ${detail}` : ''}`;
+        return new PlatformPublishError(
+          `Twitter authentication failed; the access token is invalid or expired${detail ? `: ${detail}` : ''}`,
+          true
+        );
       case 403:
-        return `Twitter rejected the post${detail ? `: ${detail}` : ' (duplicate content or insufficient permissions)'}`;
+        return new PlatformPublishError(
+          `Twitter rejected the post${detail ? `: ${detail}` : ' (duplicate content or insufficient permissions)'}`
+        );
       case 429:
-        return 'Twitter API rate limit exceeded; try again later';
+        return new PlatformPublishError('Twitter API rate limit exceeded; try again later');
       default:
-        return detail
-          ? `Twitter API error: ${detail}`
-          : `Twitter API error${status ? ` (HTTP ${status})` : ''}`;
+        return new PlatformPublishError(
+          detail ? `Twitter API error: ${detail}` : `Twitter API error${status ? ` (HTTP ${status})` : ''}`
+        );
     }
   }
-  return error instanceof Error ? error.message : 'Unknown Twitter API error';
+  return new PlatformPublishError(
+    error instanceof Error ? error.message : 'Unknown Twitter API error'
+  );
 }
 
 // Publishes to an Instagram Business account via the Graph API. A single image
@@ -166,21 +177,25 @@ const publishToInstagram = async (post: PublishablePost): Promise<PublishResult>
       message: 'Successfully posted to Instagram',
     };
   } catch (error) {
-    throw new Error(formatGraphError(error, 'Instagram'));
+    throw toGraphError(error, 'Instagram');
   }
 };
 
-// Turns a Meta Graph API failure into a meaningful, recordable message.
-function formatGraphError(error: unknown, platform: string): string {
+// Turns a Meta Graph API failure into a typed, recordable error. Meta auth
+// failures surface as HTTP 401 or OAuth error code 190.
+function toGraphError(error: unknown, platform: string): PlatformPublishError {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
     const apiError = (error.response?.data as { error?: { message?: string; code?: number } } | undefined)?.error;
+    const isAuthError = status === 401 || apiError?.code === 190;
     if (apiError?.message) {
-      return `${platform} API error: ${apiError.message}`;
+      return new PlatformPublishError(`${platform} API error: ${apiError.message}`, isAuthError);
     }
-    return `${platform} API error${status ? ` (HTTP ${status})` : ''}`;
+    return new PlatformPublishError(`${platform} API error${status ? ` (HTTP ${status})` : ''}`, isAuthError);
   }
-  return error instanceof Error ? error.message : `Unknown ${platform} API error`;
+  return new PlatformPublishError(
+    error instanceof Error ? error.message : `Unknown ${platform} API error`
+  );
 }
 
 // Publishes a text post to LinkedIn via the Posts API, authored by the connected
@@ -237,24 +252,31 @@ const publishToLinkedIn = async (post: PublishablePost): Promise<PublishResult> 
       message: 'Successfully posted to LinkedIn',
     };
   } catch (error) {
-    throw new Error(formatLinkedInError(error));
+    throw toLinkedInError(error);
   }
 };
 
-// Turns a LinkedIn API failure into a meaningful, recordable message.
-function formatLinkedInError(error: unknown): string {
+// Turns a LinkedIn API failure into a typed, recordable error.
+function toLinkedInError(error: unknown): PlatformPublishError {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
     const message = (error.response?.data as { message?: string } | undefined)?.message;
     if (status === 401) {
-      return `LinkedIn authentication failed; the access token is invalid or expired${message ? `: ${message}` : ''}`;
+      return new PlatformPublishError(
+        `LinkedIn authentication failed; the access token is invalid or expired${message ? `: ${message}` : ''}`,
+        true
+      );
     }
     if (status === 429) {
-      return 'LinkedIn API rate limit exceeded; try again later';
+      return new PlatformPublishError('LinkedIn API rate limit exceeded; try again later');
     }
-    return message ? `LinkedIn API error: ${message}` : `LinkedIn API error${status ? ` (HTTP ${status})` : ''}`;
+    return new PlatformPublishError(
+      message ? `LinkedIn API error: ${message}` : `LinkedIn API error${status ? ` (HTTP ${status})` : ''}`
+    );
   }
-  return error instanceof Error ? error.message : 'Unknown LinkedIn API error';
+  return new PlatformPublishError(
+    error instanceof Error ? error.message : 'Unknown LinkedIn API error'
+  );
 }
 
 // Publishes to a Facebook Page via the Graph API using the stored Page token and
@@ -314,7 +336,7 @@ const publishToFacebook = async (post: PublishablePost): Promise<PublishResult> 
     );
     return facebookResult(data.id);
   } catch (error) {
-    throw new Error(formatGraphError(error, 'Facebook'));
+    throw toGraphError(error, 'Facebook');
   }
 };
 
@@ -328,22 +350,41 @@ function facebookResult(postId: string): PublishResult {
 }
 
 // Helper function to refresh access tokens
+// Refreshes a social account's access token using its platform's refresh flow,
+// persists the new (encrypted) token + expiry, and returns the new plaintext
+// access token. Throws if the platform doesn't support refresh (e.g. Meta, which
+// uses long-lived Page tokens) or no refresh token is stored.
 export const refreshAccessToken = async (socialAccountId: string): Promise<string> => {
   const account = await prisma.socialAccount.findUnique({
     where: { id: socialAccountId }
   });
 
-  if (!account || !account.refreshToken) {
-    throw new Error('No refresh token available');
+  if (!account) {
+    throw new Error('Social account not found');
   }
 
-  // TODO: Implement token refresh logic for each platform
-  // This is platform-specific and requires OAuth implementation
-  
-  console.log(`Refreshing token for ${account.platform} account: ${account.username}`);
-  
-  // For now, return the existing token
-  return account.accessToken;
+  const provider = getOAuthProvider(account.platform as Platform);
+  if (!provider.refresh) {
+    throw new Error(`Token refresh is not supported for ${account.platform}`);
+  }
+  if (!account.refreshToken) {
+    throw new Error('No refresh token available for this account');
+  }
+
+  const config = getProviderConfig(account.platform as Platform);
+  const tokens = await provider.refresh(decrypt(account.refreshToken), config);
+
+  await prisma.socialAccount.update({
+    where: { id: socialAccountId },
+    data: {
+      accessToken: encrypt(tokens.accessToken),
+      // Some providers rotate the refresh token; keep the old one if they don't.
+      refreshToken: tokens.refreshToken ? encrypt(tokens.refreshToken) : account.refreshToken,
+      tokenExpiry: tokens.expiresIn ? new Date(Date.now() + tokens.expiresIn * 1000) : null,
+    },
+  });
+
+  return tokens.accessToken;
 };
 
 // Helper function to validate post content for each platform
