@@ -210,6 +210,10 @@ export interface AnalyticsQueryParams {
 // Core fetch wrapper
 // ---------------------------------------------------------------------------
 
+// Empty by default: calls go to the frontend's own origin (`/api/*`) and are
+// reverse-proxied to the backend by next.config's rewrites, keeping everything
+// same-origin. Set NEXT_PUBLIC_API_URL only to bypass the proxy and hit the
+// backend directly.
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 async function apiFetch<T>(

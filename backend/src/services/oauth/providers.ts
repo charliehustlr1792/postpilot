@@ -42,8 +42,10 @@ function env(name: string): string {
 }
 
 function buildRedirectUri(platform: Platform): string {
-    const base =
-        process.env.BACKEND_URL ?? `http://localhost:${process.env.PORT ?? 5000}`;
+    // The callback is reached through the frontend's reverse proxy, so the
+    // redirect URI lives under the public app origin (where the state cookie is
+    // also first-party). Register this exact URL in each provider's portal.
+    const base = process.env.FRONTEND_URL ?? "http://localhost:3000";
     return `${base}/api/accounts/${platform.toLowerCase()}/callback`;
 }
 
