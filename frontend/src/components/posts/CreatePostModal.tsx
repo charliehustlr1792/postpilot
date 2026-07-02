@@ -32,6 +32,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
   const [images, setImages] = useState<string[]>(editPost?.images || []);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const commonEmojis = ['😊', '🎉', '🚀', '💡', '✨', '👍', '❤️', '🔥', '💪', '🌟', '📱', '💼'];
 
@@ -53,12 +54,22 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
     return Math.min(...selectedPlatforms.map((p) => getCharacterLimit(p)));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files) {
-      // Local preview only — real upload to cloud storage lands in 3.13.
-      const newImages = Array.from(files).map((file) => URL.createObjectURL(file));
-      setImages([...images, ...newImages]);
+    if (!files || files.length === 0) return;
+    const selected = Array.from(files);
+    // Reset the input so the same file can be re-selected after removal.
+    e.target.value = '';
+
+    setUploading(true);
+    try {
+      const token = await getToken();
+      const uploaded = await Promise.all(selected.map((file) => api.uploadImage(file, token)));
+      setImages((prev) => [...prev, ...uploaded.map((u) => u.url)]);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to upload image');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -70,7 +81,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
   const charsRemaining = maxChars - content.length;
   const isOverLimit = charsRemaining < 0;
 
-  const canSubmit = content.trim().length > 0 && selectedAccountIds.length > 0 && !isOverLimit && !saving;
+  const canSubmit = content.trim().length > 0 && selectedAccountIds.length > 0 && !isOverLimit && !saving && !uploading;
 
   const handleSubmit = async (mode: 'draft' | 'schedule') => {
     const scheduledAt =
@@ -267,10 +278,20 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
               )}
 
               {/* Upload Button */}
-              <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-[#EAE7E4] rounded-xl cursor-pointer hover:border-[#FF9B4F] hover:bg-[#F3EFEC]/50 transition-all">
-                <ImageIcon className="w-10 h-10 text-[#4D4946]/40 mb-3" />
+              <label
+                className={`flex flex-col items-center justify-center p-8 border-2 border-dashed border-[#EAE7E4] rounded-xl transition-all ${
+                  uploading
+                    ? 'opacity-60 cursor-not-allowed'
+                    : 'cursor-pointer hover:border-[#FF9B4F] hover:bg-[#F3EFEC]/50'
+                }`}
+              >
+                {uploading ? (
+                  <Loader2 className="w-10 h-10 text-[#FF6E00] mb-3 animate-spin" />
+                ) : (
+                  <ImageIcon className="w-10 h-10 text-[#4D4946]/40 mb-3" />
+                )}
                 <span className="text-[#4D4946] text-sm font-medium">
-                  Click to upload images
+                  {uploading ? 'Uploading...' : 'Click to upload images'}
                 </span>
                 <span className="text-[#4D4946]/60 text-xs mt-1">
                   PNG, JPG up to 10MB
@@ -279,6 +300,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
                   type="file"
                   accept="image/*"
                   multiple
+                  disabled={uploading}
                   onChange={handleImageUpload}
                   className="hidden"
                 />

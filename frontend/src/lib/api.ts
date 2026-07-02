@@ -129,6 +129,11 @@ export interface OAuthUrlResponse {
   url: string;
 }
 
+// POST /api/uploads
+export interface UploadResponse {
+  url: string;
+}
+
 // GET /api/users/me
 export interface UserResponse {
   user: User;
@@ -221,8 +226,11 @@ async function apiFetch<T>(
   options: RequestInit = {},
   token?: string | null,
 ): Promise<T> {
+  // For FormData bodies, let the browser set the multipart Content-Type (with
+  // its boundary); only default to JSON otherwise.
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers as Record<string, string>),
   };
@@ -370,6 +378,18 @@ export const api = {
     return apiFetch<DeleteAccountResponse>(
       `/api/accounts/${accountId}`,
       { method: 'DELETE' },
+      token,
+    );
+  },
+
+  // ---- Uploads -------------------------------------------------------------
+
+  uploadImage(file: File, token?: string | null) {
+    const form = new FormData();
+    form.append('file', file);
+    return apiFetch<UploadResponse>(
+      '/api/uploads',
+      { method: 'POST', body: form },
       token,
     );
   },
