@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { PublishablePost } from '../../types/post';
 import { PublishResult } from '../../types/publishResult';
+import { InsightsResult } from '../../types/insights';
 import { GRAPH_API, toGraphError } from './graph';
 
 const IG_CAROUSEL_MAX = 10;
@@ -92,3 +93,38 @@ export const publishToInstagram = async (post: PublishablePost): Promise<Publish
     throw toGraphError(error, 'Instagram');
   }
 };
+
+// Fetches engagement metrics for an IG media object. Like/comment counts come
+// from the media fields; impressions/reach/saves from the insights edge (which
+// isn't available for every media type, so it's best-effort).
+export async function fetchInstagramInsights(
+  mediaId: string,
+  accessToken: string
+): Promise<InsightsResult> {
+  const { data: media } = await axios.get<{ like_count?: number; comments_count?: number }>(
+    `${GRAPH_API}/${mediaId}`,
+    { params: { fields: 'like_count,comments_count', access_token: accessToken } }
+  );
+
+  const result: InsightsResult = {
+    likes: media.like_count,
+    comments: media.comments_count,
+  };
+
+  try {
+    const { data } = await axios.get<{ data?: { name: string; values?: { value: number }[] }[] }>(
+      `${GRAPH_API}/${mediaId}/insights`,
+      { params: { metric: 'impressions,reach,saved', access_token: accessToken } }
+    );
+    for (const item of data.data ?? []) {
+      const value = item.values?.[0]?.value ?? 0;
+      if (item.name === 'impressions') result.impressions = value;
+      else if (item.name === 'reach') result.reach = value;
+      else if (item.name === 'saved') result.saves = value;
+    }
+  } catch {
+    // Insights unavailable for this media type — keep the base counts.
+  }
+
+  return result;
+}

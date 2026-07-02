@@ -2,6 +2,7 @@ import axios from 'axios';
 import { PublishablePost } from '../../types/post';
 import { PublishResult } from '../../types/publishResult';
 import { PlatformPublishError } from '../../types/publishError';
+import { InsightsResult } from '../../types/insights';
 
 const LINKEDIN_VERSION = '202405';
 const LINKEDIN_MAX_CHARS = 3000;
@@ -60,6 +61,30 @@ export const publishToLinkedIn = async (post: PublishablePost): Promise<PublishR
     throw toLinkedInError(error);
   }
 };
+
+// Fetches engagement metrics for a member post via the socialActions summary.
+// Impressions/clicks aren't exposed for member posts under standard scopes
+// (those require organization analytics), so only likes/comments are returned.
+export async function fetchLinkedInInsights(
+  postUrn: string,
+  accessToken: string
+): Promise<InsightsResult> {
+  const { data } = await axios.get<{
+    likesSummary?: { totalLikes?: number };
+    commentsSummary?: { aggregatedTotalComments?: number };
+  }>(`https://api.linkedin.com/rest/socialActions/${encodeURIComponent(postUrn)}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'X-Restli-Protocol-Version': '2.0.0',
+      'LinkedIn-Version': LINKEDIN_VERSION,
+    },
+  });
+
+  return {
+    likes: data.likesSummary?.totalLikes,
+    comments: data.commentsSummary?.aggregatedTotalComments,
+  };
+}
 
 // Turns a LinkedIn API failure into a typed, recordable error.
 function toLinkedInError(error: unknown): PlatformPublishError {
