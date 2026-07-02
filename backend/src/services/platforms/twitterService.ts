@@ -2,6 +2,7 @@ import axios from 'axios';
 import { PublishablePost } from '../../types/post';
 import { PublishResult } from '../../types/publishResult';
 import { PlatformPublishError } from '../../types/publishError';
+import { InsightsResult } from '../../types/insights';
 
 const TWITTER_MAX_CHARS = 280;
 
@@ -39,6 +40,38 @@ export const publishToTwitter = async (post: PublishablePost): Promise<PublishRe
     throw toTwitterError(error);
   }
 };
+
+// Fetches engagement metrics for a tweet via its public_metrics.
+export async function fetchTwitterInsights(
+  tweetId: string,
+  accessToken: string
+): Promise<InsightsResult> {
+  const { data } = await axios.get<{
+    data?: {
+      public_metrics?: {
+        retweet_count?: number;
+        reply_count?: number;
+        like_count?: number;
+        quote_count?: number;
+        impression_count?: number;
+        bookmark_count?: number;
+      };
+    };
+  }>(`https://api.twitter.com/2/tweets/${tweetId}`, {
+    params: { 'tweet.fields': 'public_metrics' },
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  const m = data.data?.public_metrics;
+  if (!m) return {};
+  return {
+    impressions: m.impression_count,
+    likes: m.like_count,
+    comments: m.reply_count,
+    shares: (m.retweet_count ?? 0) + (m.quote_count ?? 0),
+    saves: m.bookmark_count,
+  };
+}
 
 // Turns a Twitter API failure into a typed, recordable error.
 function toTwitterError(error: unknown): PlatformPublishError {

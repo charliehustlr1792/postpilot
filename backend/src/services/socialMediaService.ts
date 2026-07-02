@@ -1,13 +1,14 @@
 import prisma from '../lib/db';
 import { PublishablePost } from '../types/post';
 import { PublishResult } from '../types/publishResult';
+import { InsightsResult } from '../types/insights';
 import { encrypt, decrypt } from '../lib/crypto';
 import { getOAuthProvider, getProviderConfig } from './oauth';
 import { Platform } from '../types/enums';
-import { publishToTwitter } from './platforms/twitterService';
-import { publishToInstagram } from './platforms/instagramService';
-import { publishToLinkedIn } from './platforms/linkedinService';
-import { publishToFacebook } from './platforms/facebookService';
+import { publishToTwitter, fetchTwitterInsights } from './platforms/twitterService';
+import { publishToInstagram, fetchInstagramInsights } from './platforms/instagramService';
+import { publishToLinkedIn, fetchLinkedInInsights } from './platforms/linkedinService';
+import { publishToFacebook, fetchFacebookInsights } from './platforms/facebookService';
 
 // Routes a publish request to the right platform service. Each service owns its
 // API calls, validation, and error mapping (see services/platforms/).
@@ -24,6 +25,22 @@ export const publishPostToSocialMedia = async (post: PublishablePost): Promise<P
   } catch (error) {
     console.error(`Error publishing to ${post.account.platform}:`, error);
     throw error;
+  }
+};
+
+// Routes an insights request to the right platform service, using the target's
+// platform post id and the account's (already decrypted) access token.
+export const fetchPostInsights = async (
+  platform: string,
+  platformPostId: string,
+  accessToken: string
+): Promise<InsightsResult> => {
+  switch (platform) {
+    case 'TWITTER': return fetchTwitterInsights(platformPostId, accessToken);
+    case 'INSTAGRAM': return fetchInstagramInsights(platformPostId, accessToken);
+    case 'LINKEDIN': return fetchLinkedInInsights(platformPostId, accessToken);
+    case 'FACEBOOK': return fetchFacebookInsights(platformPostId, accessToken);
+    default: throw new Error(`Unsupported platform: ${platform}`);
   }
 };
 

@@ -1,6 +1,7 @@
 import {Worker} from 'bullmq'
-import {connection} from '../lib/queue'
+import {connection, analyticsQueue} from '../lib/queue'
 import {processPostPublish} from '../jobs/postPublishProcessor'
+import {processAnalyticsSync} from '../jobs/analyticsSyncProcessor'
 
 export const postPublishWorker=new Worker('post-publish',
     processPostPublish,{
@@ -9,19 +10,25 @@ export const postPublishWorker=new Worker('post-publish',
     }
 )
 
-//analytics worker(placeholder for later)
 export const analyticsWorker=new Worker(
     'analytics-sync',
-    async(job)=>{
-        console.log('Processing analytics job:',job.data)
-
-        //analytics processing logic here
-        return {success:true}
-    },{
+    processAnalyticsSync,
+    {
         connection,
-        concurrency:3,
+        concurrency:1,
     }
 )
+
+// Registers the repeatable analytics-sync job. BullMQ dedupes by the repeat
+// options, so calling this on every startup keeps a single schedule.
+const ANALYTICS_SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000 // every 6 hours
+export async function scheduleAnalyticsSync() {
+    await analyticsQueue.add(
+        'analytics-sync',
+        {},
+        { repeat: { every: ANALYTICS_SYNC_INTERVAL_MS } }
+    )
+}
 
 //worker event listeners
 postPublishWorker.on('completed',(job)=>{

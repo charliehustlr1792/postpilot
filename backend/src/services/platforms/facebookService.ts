@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { PublishablePost } from '../../types/post';
 import { PublishResult } from '../../types/publishResult';
+import { InsightsResult } from '../../types/insights';
 import { GRAPH_API, toGraphError } from './graph';
 
 // Publishes to a Facebook Page via the Graph API using the stored Page token and
@@ -71,4 +72,45 @@ function facebookResult(postId: string): PublishResult {
     success: true,
     message: 'Successfully posted to Facebook',
   };
+}
+
+// Fetches engagement metrics for a Page post. Like/comment/share counts come
+// from the post's summary fields; impressions/clicks from the insights edge
+// (which needs Page permissions, so it's best-effort).
+export async function fetchFacebookInsights(
+  postId: string,
+  accessToken: string
+): Promise<InsightsResult> {
+  const { data } = await axios.get<{
+    likes?: { summary?: { total_count?: number } };
+    comments?: { summary?: { total_count?: number } };
+    shares?: { count?: number };
+  }>(`${GRAPH_API}/${postId}`, {
+    params: {
+      fields: 'likes.summary(true),comments.summary(true),shares',
+      access_token: accessToken,
+    },
+  });
+
+  const result: InsightsResult = {
+    likes: data.likes?.summary?.total_count,
+    comments: data.comments?.summary?.total_count,
+    shares: data.shares?.count,
+  };
+
+  try {
+    const { data: insights } = await axios.get<{ data?: { name: string; values?: { value: number }[] }[] }>(
+      `${GRAPH_API}/${postId}/insights`,
+      { params: { metric: 'post_impressions,post_clicks', access_token: accessToken } }
+    );
+    for (const item of insights.data ?? []) {
+      const value = item.values?.[0]?.value ?? 0;
+      if (item.name === 'post_impressions') result.impressions = value;
+      else if (item.name === 'post_clicks') result.clicks = value;
+    }
+  } catch {
+    // Page insights may require extra permissions — keep the engagement counts.
+  }
+
+  return result;
 }

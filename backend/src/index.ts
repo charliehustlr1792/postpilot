@@ -14,7 +14,7 @@ import webhookRoutes from './routes/webhookRoutes'
 import {postPublishQueue} from './lib/queue'
 import {processPostPublish} from './jobs/postPublishProcessor'
 import { clerkClient,clerkMiddleware,requireAuth,getAuth } from '@clerk/express';
-import './workers'
+import { scheduleAnalyticsSync } from './workers'
 
 dotenv.config();
 const app = express();
@@ -71,3 +71,8 @@ app.get('/api/test-db',async(req,res)=>{
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// Register the recurring analytics-sync job (idempotent across restarts).
+scheduleAnalyticsSync().catch((err) =>
+  console.error('Failed to schedule analytics sync:', err)
+);
