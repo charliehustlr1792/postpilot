@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { requireAuth } from '@clerk/express';
 import { uploadImage } from '../controllers/uploadController';
+import { writeLimiter } from '../middleware/rateLimit';
 
 // Keep the file in memory so it can be streamed straight to Cloudinary.
 const upload = multer({
@@ -23,6 +24,7 @@ const router = Router();
 router.post(
     '/uploads',
     requireAuth(),
+    writeLimiter,
     (req, res, next) => {
         upload.single('file')(req, res, (err) => {
             if (err) {

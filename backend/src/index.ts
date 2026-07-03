@@ -3,6 +3,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import dotenv from 'dotenv';
 import prisma from './lib/db'
 import userRoutes from './routes/userRoutes';
@@ -19,6 +20,13 @@ import { scheduleAnalyticsSync } from './workers'
 
 dotenv.config();
 const app = express();
+
+// The app runs behind the frontend reverse proxy (one hop); trust it so req.ip
+// and rate-limit keys resolve correctly.
+app.set('trust proxy', 1);
+
+// Security headers.
+app.use(helmet());
 app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 app.use(clerkMiddleware());
 
