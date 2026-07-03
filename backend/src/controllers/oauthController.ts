@@ -10,6 +10,7 @@ import {
 } from "../lib/oauthState";
 import { Platform } from "../types/enums";
 import { getOAuthProvider, getProviderConfig } from "../services/oauth";
+import { AppError } from "../lib/AppError";
 
 // Maps the lowercase URL segment (e.g. "twitter") to a Platform enum value.
 function parsePlatform(value: string): Platform | null {
@@ -31,17 +32,17 @@ function frontendRedirect(res: Response, params: Record<string, string>) {
 export const startOAuth = async (req: Request, res: Response) => {
     const { userId } = getAuth(req);
     if (!userId) {
-        return res.status(401).json({ error: "User not authenticated" });
+        throw new AppError(401, "User not authenticated");
     }
 
     const platform = parsePlatform(req.params.platform);
     if (!platform) {
-        return res.status(400).json({ error: "Unsupported platform" });
+        throw new AppError(400, "Unsupported platform");
     }
 
     const config = getProviderConfig(platform);
     if (!config.clientId || !config.clientSecret) {
-        return res.status(503).json({ error: `${platform} OAuth is not configured` });
+        throw new AppError(503, `${platform} OAuth is not configured`);
     }
 
     const state = crypto.randomBytes(16).toString("hex");

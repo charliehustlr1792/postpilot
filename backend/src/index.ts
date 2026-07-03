@@ -17,6 +17,7 @@ import {postPublishQueue} from './lib/queue'
 import {processPostPublish} from './jobs/postPublishProcessor'
 import { clerkClient,clerkMiddleware,requireAuth,getAuth } from '@clerk/express';
 import { scheduleAnalyticsSync } from './workers'
+import { notFound, errorHandler } from './middleware/errorHandler'
 
 dotenv.config();
 const app = express();
@@ -78,6 +79,10 @@ app.get('/api/test-db',async(req,res)=>{
     console.error('Error connecting to the database:',error);
   }
 })
+
+// Unmatched routes → 404, then the central error handler (must be last).
+app.use(notFound);
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
