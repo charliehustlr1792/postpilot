@@ -9,6 +9,7 @@ import {
     duplicatePost
 } from "../controllers/postController";
 import { validate } from "../middleware/validate";
+import { writeLimiter } from "../middleware/rateLimit";
 import {
     createPostBodySchema,
     duplicatePostBodySchema,
@@ -19,10 +20,10 @@ import {
 
 const router=Router();
 router.get('/posts', requireAuth(), validate({ query: listPostsQuerySchema }), getAllPosts);
-router.post('/posts', requireAuth(), validate({ body: createPostBodySchema }), createPost);
+router.post('/posts', requireAuth(), writeLimiter, validate({ body: createPostBodySchema }), createPost);
 router.patch('/posts/:postId', requireAuth(), validate({ params: postIdParamsSchema, body: updatePostBodySchema }), updatePost);
 router.delete('/posts/:postId', requireAuth(), validate({ params: postIdParamsSchema }), deletePost);
 router.get('/posts/:postId', requireAuth(), validate({ params: postIdParamsSchema }), getPost);
-router.post('/posts/:postId/duplicate', requireAuth(), validate({ params: postIdParamsSchema, body: duplicatePostBodySchema }), duplicatePost);
+router.post('/posts/:postId/duplicate', requireAuth(), writeLimiter, validate({ params: postIdParamsSchema, body: duplicatePostBodySchema }), duplicatePost);
 
 export default router;
