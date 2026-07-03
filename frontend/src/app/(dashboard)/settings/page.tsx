@@ -1,7 +1,7 @@
 // app/(dashboard)/settings/page.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { User, Bell, CreditCard, Users, Smartphone, Shield, Trash2, Plus, Loader2 } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { toast } from 'sonner';
@@ -20,6 +20,8 @@ const SettingsPage = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Seed the form once Clerk has loaded the user.
   useEffect(() => {
@@ -42,6 +44,36 @@ const SettingsPage = () => {
       toast.error(err instanceof Error ? err.message : 'Failed to save profile');
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  // Avatar also goes through Clerk (source of truth); the webhook syncs the new
+  // image URL into our DB, mirroring the name-save flow.
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!user || !file) return;
+    try {
+      setAvatarBusy(true);
+      await user.setProfileImage({ file });
+      toast.success('Profile picture updated');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update picture');
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const handleAvatarRemove = async () => {
+    if (!user || !user.hasImage) return;
+    try {
+      setAvatarBusy(true);
+      await user.setProfileImage({ file: null });
+      toast.success('Profile picture removed');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove picture');
+    } finally {
+      setAvatarBusy(false);
     }
   };
 
@@ -82,19 +114,40 @@ const SettingsPage = () => {
             {/* Avatar Section */}
             <div className="bg-white rounded-xl border border-[#EAE7E4] p-6">
               <div className="flex items-center gap-6">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#FF9B4F] to-[#FF6E00] flex items-center justify-center text-white text-2xl font-bold">
-                  {user?.firstName?.[0]}{user?.lastName?.[0]}
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#FF9B4F] to-[#FF6E00] flex items-center justify-center text-white text-2xl font-bold overflow-hidden shrink-0">
+                  {user?.hasImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={user.imageUrl} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <>{user?.firstName?.[0]}{user?.lastName?.[0]}</>
+                  )}
                 </div>
                 <div className="flex-1">
                   <h3 className="text-[#181817] font-semibold mb-1">Profile Picture</h3>
                   <p className="text-[#4D4946] text-sm mb-3">JPG, PNG. Max size 5MB</p>
                   <div className="flex gap-3">
-                    <button className="px-4 py-2 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-medium rounded-lg text-sm hover:shadow-lg transition-all">
+                    <button
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={avatarBusy}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-medium rounded-lg text-sm hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {avatarBusy && <Loader2 className="w-4 h-4 animate-spin" />}
                       Upload New
                     </button>
-                    <button className="px-4 py-2 text-[#4D4946] font-medium hover:bg-[#F3EFEC] rounded-lg text-sm transition-colors">
+                    <button
+                      onClick={handleAvatarRemove}
+                      disabled={avatarBusy || !user?.hasImage}
+                      className="px-4 py-2 text-[#4D4946] font-medium hover:bg-[#F3EFEC] rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                       Remove
                     </button>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      className="hidden"
+                    />
                   </div>
                 </div>
               </div>
