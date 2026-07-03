@@ -28,6 +28,32 @@ const dayKey = (d: Date) =>
 const formatTime = (d: Date) =>
   d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
 
+const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// Colored time + content block used in the month and week grids.
+const EntryChip = ({
+  entry,
+  onSelect,
+}: {
+  entry: CalendarEntry;
+  onSelect: (e: CalendarEntry) => void;
+}) => (
+  <div
+    onClick={(e) => {
+      e.stopPropagation();
+      onSelect(entry);
+    }}
+    className="group p-2 rounded-lg text-white text-xs font-medium truncate transition-all hover:scale-105 cursor-pointer"
+    style={{ backgroundColor: PLATFORM_COLORS[entry.platform] }}
+  >
+    <div className="flex items-center gap-1">
+      <Clock className="w-3 h-3" />
+      <span>{formatTime(entry.scheduledAt)}</span>
+    </div>
+    <p className="truncate mt-1 opacity-90 group-hover:opacity-100">{entry.content}</p>
+  </div>
+);
+
 const CalendarPage = () => {
   const { getToken } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -98,6 +124,16 @@ const CalendarPage = () => {
     currentDay.setDate(currentDay.getDate() + 1);
   }
 
+  // The 7 days (Sun–Sat) of the week containing currentDate, for the week view.
+  const weekStart = new Date(currentDate);
+  weekStart.setDate(currentDate.getDate() - currentDate.getDay());
+  const weekDays: Date[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    weekDays.push(d);
+  }
+
   // Index entries by local day for O(1) lookups, sorted by time within a day.
   const entriesByDay = useMemo(() => {
     const map = new Map<string, CalendarEntry[]>();
@@ -115,13 +151,25 @@ const CalendarPage = () => {
 
   const getPostsForDate = (date: Date) => entriesByDay.get(dayKey(date)) ?? [];
 
-  const navigateMonth = (direction: number) => {
-    setCurrentDate(new Date(year, month + direction, 1));
+  // Navigation and the header label both follow the active view.
+  const navigate = (direction: number) => {
+    const d = new Date(currentDate);
+    if (viewMode === 'month') d.setMonth(d.getMonth() + direction);
+    else if (viewMode === 'week') d.setDate(d.getDate() + 7 * direction);
+    else d.setDate(d.getDate() + direction);
+    setCurrentDate(d);
   };
 
   const goToToday = () => {
     setCurrentDate(new Date());
   };
+
+  const headerLabel =
+    viewMode === 'month'
+      ? `${monthNames[month]} ${year}`
+      : viewMode === 'week'
+        ? `${weekDays[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${weekDays[6].toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
+        : currentDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
   return (
     <div className="space-y-6">
@@ -156,16 +204,16 @@ const CalendarPage = () => {
           {/* Month Navigation */}
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigateMonth(-1)}
+              onClick={() => navigate(-1)}
               className="p-2 hover:bg-[#F3EFEC] rounded-lg transition-colors"
             >
               <ChevronLeft className="w-5 h-5 text-[#4D4946]" />
             </button>
-            <h2 className="text-lg font-bold text-[#181817] min-w-[200px] text-center">
-              {monthNames[month]} {year}
+            <h2 className="text-lg font-bold text-[#181817] min-w-[240px] text-center">
+              {headerLabel}
             </h2>
             <button
-              onClick={() => navigateMonth(1)}
+              onClick={() => navigate(1)}
               className="p-2 hover:bg-[#F3EFEC] rounded-lg transition-colors"
             >
               <ChevronRight className="w-5 h-5 text-[#4D4946]" />
@@ -204,84 +252,160 @@ const CalendarPage = () => {
         <ErrorState title="Couldn't load scheduled posts" message={error} onRetry={loadScheduled} />
       ) : (
       <div className="bg-white rounded-xl border border-[#EAE7E4] p-6">
-        {/* Day Headers */}
-        <div className="grid grid-cols-7 gap-2 mb-4">
-          {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day) => (
-            <div key={day} className="text-center font-semibold text-[#4D4946] text-sm py-2">
-              <span className="hidden sm:inline">{day}</span>
-              <span className="sm:hidden">{day.slice(0, 3)}</span>
+        {/* Month view */}
+        {viewMode === 'month' && (
+          <>
+            {/* Day Headers */}
+            <div className="grid grid-cols-7 gap-2 mb-4">
+              {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day) => (
+                <div key={day} className="text-center font-semibold text-[#4D4946] text-sm py-2">
+                  <span className="hidden sm:inline">{day}</span>
+                  <span className="sm:hidden">{day.slice(0, 3)}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* Calendar Days */}
-        <div className="grid grid-cols-7 gap-2">
-          {days.map((day, index) => {
-            const dayPosts = getPostsForDate(day);
-            const isCurrentMonth = day.getMonth() === month;
-            const isToday = day.toDateString() === today.toDateString();
-            const isSelected = selectedDate && day.toDateString() === selectedDate.toDateString();
-            const hasPosts = dayPosts.length > 0;
+            {/* Calendar Days */}
+            <div className="grid grid-cols-7 gap-2">
+              {days.map((day, index) => {
+                const dayPosts = getPostsForDate(day);
+                const isCurrentMonth = day.getMonth() === month;
+                const isToday = day.toDateString() === today.toDateString();
+                const isSelected = selectedDate && day.toDateString() === selectedDate.toDateString();
+                const hasPosts = dayPosts.length > 0;
 
-            return (
-              <div
-                key={index}
-                onClick={() => setSelectedDate(day)}
-                className={`min-h-[120px] p-2 sm:p-3 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
-                  isCurrentMonth ? 'border-[#EAE7E4]' : 'border-[#EAE7E4]/40 bg-[#F3EFEC]/30'
-                } ${
-                  isToday ? 'border-[#FF6E00] bg-[#FF9B4F]/5' : ''
-                } ${
-                  isSelected ? 'border-[#FF9B4F] shadow-lg scale-[1.02]' : 'hover:border-[#FFD4B2] hover:shadow-md'
-                }`}
-              >
-                {/* Day Number */}
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-sm font-semibold ${
-                    isCurrentMonth ? 'text-[#181817]' : 'text-[#4D4946]/40'
-                  } ${
-                    isToday ? 'w-6 h-6 flex items-center justify-center bg-[#FF6E00] text-white rounded-full' : ''
-                  }`}>
-                    {day.getDate()}
-                  </span>
-                  {hasPosts && (
-                    <span className="text-xs font-medium text-[#FF6E00] bg-[#FF9B4F]/10 px-2 py-0.5 rounded-full">
-                      {dayPosts.length}
-                    </span>
-                  )}
-                </div>
-
-                {/* Scheduled Posts */}
-                <div className="space-y-1">
-                  {dayPosts.slice(0, 3).map((post) => (
-                    <div
-                      key={post.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedPost(post);
-                      }}
-                      className="group p-2 rounded-lg text-white text-xs font-medium truncate transition-all hover:scale-105 cursor-pointer"
-                      style={{ backgroundColor: PLATFORM_COLORS[post.platform] }}
-                    >
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        <span>{formatTime(post.scheduledAt)}</span>
-                      </div>
-                      <p className="truncate mt-1 opacity-90 group-hover:opacity-100">
-                        {post.content}
-                      </p>
+                return (
+                  <div
+                    key={index}
+                    onClick={() => setSelectedDate(day)}
+                    className={`min-h-[120px] p-2 sm:p-3 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+                      isCurrentMonth ? 'border-[#EAE7E4]' : 'border-[#EAE7E4]/40 bg-[#F3EFEC]/30'
+                    } ${
+                      isToday ? 'border-[#FF6E00] bg-[#FF9B4F]/5' : ''
+                    } ${
+                      isSelected ? 'border-[#FF9B4F] shadow-lg scale-[1.02]' : 'hover:border-[#FFD4B2] hover:shadow-md'
+                    }`}
+                  >
+                    {/* Day Number */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-sm font-semibold ${
+                        isCurrentMonth ? 'text-[#181817]' : 'text-[#4D4946]/40'
+                      } ${
+                        isToday ? 'w-6 h-6 flex items-center justify-center bg-[#FF6E00] text-white rounded-full' : ''
+                      }`}>
+                        {day.getDate()}
+                      </span>
+                      {hasPosts && (
+                        <span className="text-xs font-medium text-[#FF6E00] bg-[#FF9B4F]/10 px-2 py-0.5 rounded-full">
+                          {dayPosts.length}
+                        </span>
+                      )}
                     </div>
-                  ))}
-                  {dayPosts.length > 3 && (
-                    <div className="text-xs text-[#4D4946]/60 text-center py-1">
-                      +{dayPosts.length - 3} more
+
+                    {/* Scheduled Posts */}
+                    <div className="space-y-1">
+                      {dayPosts.slice(0, 3).map((post) => (
+                        <EntryChip key={post.id} entry={post} onSelect={setSelectedPost} />
+                      ))}
+                      {dayPosts.length > 3 && (
+                        <div className="text-xs text-[#4D4946]/60 text-center py-1">
+                          +{dayPosts.length - 3} more
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* Week view */}
+        {viewMode === 'week' && (
+          <div className="grid grid-cols-1 sm:grid-cols-7 gap-2">
+            {weekDays.map((day, index) => {
+              const dayPosts = getPostsForDate(day);
+              const isToday = day.toDateString() === today.toDateString();
+              return (
+                <div
+                  key={index}
+                  onClick={() => setSelectedDate(day)}
+                  className={`min-h-[420px] p-3 border-2 rounded-xl cursor-pointer transition-all ${
+                    isToday ? 'border-[#FF6E00] bg-[#FF9B4F]/5' : 'border-[#EAE7E4] hover:border-[#FFD4B2]'
+                  }`}
+                >
+                  <div className="text-center mb-3">
+                    <p className="text-xs font-medium text-[#4D4946]/70">{WEEKDAYS_SHORT[day.getDay()]}</p>
+                    <p className={`text-sm font-semibold ${
+                      isToday ? 'w-6 h-6 mx-auto flex items-center justify-center bg-[#FF6E00] text-white rounded-full' : 'text-[#181817]'
+                    }`}>
+                      {day.getDate()}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    {dayPosts.length === 0 ? (
+                      <p className="text-xs text-[#4D4946]/40 text-center mt-4">No posts</p>
+                    ) : (
+                      dayPosts.map((post) => (
+                        <EntryChip key={post.id} entry={post} onSelect={setSelectedPost} />
+                      ))
+                    )}
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Day view */}
+        {viewMode === 'day' && (
+          <div>
+            <div className="mb-6 text-center">
+              <p className="text-sm font-medium text-[#4D4946]/70">
+                {currentDate.toLocaleDateString(undefined, { weekday: 'long' })}
+              </p>
+              <p className="text-3xl font-bold text-[#181817]">{currentDate.getDate()}</p>
+            </div>
+
+            {getPostsForDate(currentDate).length === 0 ? (
+              <div className="text-center py-16">
+                <CalendarIcon className="w-12 h-12 text-[#4D4946]/30 mx-auto mb-3" />
+                <p className="text-[#4D4946]/60 text-sm">No posts scheduled for this day</p>
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="mt-4 px-4 py-2 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-medium rounded-lg text-sm"
+                >
+                  Schedule Post
+                </button>
               </div>
-            );
-          })}
-        </div>
+            ) : (
+              <div className="space-y-2 max-w-2xl mx-auto">
+                {getPostsForDate(currentDate).map((post) => (
+                  <div
+                    key={post.id}
+                    onClick={() => setSelectedPost(post)}
+                    className="flex items-start gap-4 p-4 border border-[#EAE7E4] rounded-xl hover:border-[#FF9B4F] transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-1 text-[#4D4946] text-sm font-medium min-w-[64px] pt-0.5">
+                      <Clock className="w-4 h-4" />
+                      {formatTime(post.scheduledAt)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-xs font-medium mb-1.5"
+                        style={{ backgroundColor: PLATFORM_COLORS[post.platform] }}
+                      >
+                        <PlatformIcon platform={post.platform} className="w-3 h-3" />
+                        {PLATFORM_LABELS[post.platform]}
+                      </div>
+                      <p className="text-[#181817] text-sm line-clamp-2">{post.content}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
       )}
 
