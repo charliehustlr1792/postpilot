@@ -1,8 +1,16 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import Sidebar from '@/components/dashboard/Sidebar';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
+
+// The dashboard is private — keep every page under it out of search indexes.
+// Per-route layouts override the title.
+export const metadata: Metadata = {
+  title: 'Dashboard',
+  robots: { index: false, follow: false },
+};
 
 export default async function DashboardLayout({
   children,

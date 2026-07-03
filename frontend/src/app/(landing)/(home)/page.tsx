@@ -11,6 +11,13 @@ import PostPilotTestimonials from '@/components/marketing/Testimonials'
 import Button from '@/components/ui/Button'
 import Link from 'next/link'
 import React from 'react'
+import type { Metadata } from 'next'
+
+// Inherits the marketing title/description/OG from the root layout; just pins
+// the canonical URL for the landing page.
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+}
 
 const HomePage = () => {
   return (
