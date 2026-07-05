@@ -154,6 +154,16 @@ export interface UserStatsResponse {
   };
 }
 
+// GET /api/dashboard/overview
+export interface DashboardOverviewResponse {
+  stats: {
+    totalPosts: number;
+    totalReach: number;
+    engagementRate: number;
+    scheduledPosts: number;
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Request body types — used by callers when building payloads.
 // ---------------------------------------------------------------------------
@@ -414,6 +424,10 @@ export const api = {
       { method: 'DELETE' },
       token,
     );
+  },
+
+  getDashboardOverview(token?: string | null) {
+    return apiFetch<DashboardOverviewResponse>('/api/dashboard/overview', {}, token);
   },
 
   getMyStats(token?: string | null) {

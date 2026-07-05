@@ -12,6 +12,7 @@ import postRoutes from './routes/postRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import scheduleRoutes from './routes/scheduleRoutes'
 import uploadRoutes from './routes/uploadRoutes'
+import dashboardRoutes from './routes/dashboardRoutes'
 import webhookRoutes from './routes/webhookRoutes'
 import {postPublishQueue} from './lib/queue'
 import {processPostPublish} from './jobs/postPublishProcessor'
@@ -45,6 +46,7 @@ app.use('/api', postRoutes);
 app.use('/api', analyticsRoutes);
 app.use('/api',scheduleRoutes);
 app.use('/api', uploadRoutes);
+app.use('/api', dashboardRoutes);
 
 // Use requireAuth() to protect this route
 // If user isn't authenticated, requireAuth() will redirect back to the homepage

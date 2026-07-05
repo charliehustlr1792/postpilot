@@ -31,17 +31,9 @@ const DashboardPage = () => {
     setError(null);
     try {
       const token = await getToken();
-      const [userStats, overview, scheduled] = await Promise.all([
-        api.getMyStats(token),
-        api.getAnalyticsOverview({}, token),
-        api.getScheduledPosts(token),
-      ]);
-      setStats({
-        totalPosts: userStats.stats.totalPosts,
-        totalReach: overview.overview.totalReach,
-        engagementRate: overview.overview.avgEngagementRate,
-        scheduledPosts: scheduled.posts.length,
-      });
+      // Single consolidated call — the endpoint computes all four stats server-side.
+      const { stats } = await api.getDashboardOverview(token);
+      setStats(stats);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard stats');
     } finally {
