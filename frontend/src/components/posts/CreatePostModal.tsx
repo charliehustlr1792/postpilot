@@ -5,13 +5,14 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@clerk/nextjs';
 import { toast } from 'sonner';
-import { X, Image as ImageIcon, Calendar as CalendarIcon, Clock, Send, Smile, Loader2, AlertCircle } from 'lucide-react';
+import { X, Image as ImageIcon, Calendar as CalendarIcon, Clock, Send, Smile, Loader2, AlertCircle, Eye } from 'lucide-react';
 import { Platform, Post } from '@/types/post';
 import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import { getCharacterLimit } from '@/lib/utils';
 import { useAccounts } from '@/hooks/useAccounts';
 import { api } from '@/lib/api';
 import { PlatformIcon } from '@/components/ui/PlatformIcon';
+import { PostPreview } from '@/components/posts/PostPreview';
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -33,6 +34,11 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+
+  // The selected account to attribute a platform's preview to.
+  const accountForPlatform = (platform: Platform) =>
+    accounts.find((a) => selectedAccountIds.includes(a.id) && a.platform === platform);
 
   const commonEmojis = ['😊', '🎉', '🚀', '💡', '✨', '👍', '❤️', '🔥', '💪', '🌟', '📱', '💼'];
 
@@ -340,6 +346,49 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onSa
               </p>
             )}
           </div>
+
+          {/* Per-platform Preview */}
+          {selectedPlatforms.length > 0 && content.trim().length > 0 && (
+            <div>
+              <button
+                onClick={() => setShowPreview((v) => !v)}
+                className="flex items-center gap-2 text-[#181817] font-semibold text-sm mb-3"
+              >
+                <Eye className="w-4 h-4" />
+                {showPreview ? 'Hide preview' : 'Preview per platform'}
+              </button>
+              {showPreview && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {selectedPlatforms.map((platform) => {
+                    const account = accountForPlatform(platform);
+                    return (
+                      <div key={platform}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div
+                            className="w-5 h-5 rounded flex items-center justify-center text-white"
+                            style={{ backgroundColor: PLATFORM_COLORS[platform] }}
+                          >
+                            <PlatformIcon platform={platform} className="w-3 h-3" />
+                          </div>
+                          <span className="text-xs font-medium text-[#4D4946]">
+                            {PLATFORM_LABELS[platform]}
+                          </span>
+                        </div>
+                        <PostPreview
+                          platform={platform}
+                          content={content}
+                          images={images}
+                          authorName={account?.displayName || account?.username}
+                          authorHandle={account?.username}
+                          avatarUrl={account?.profileImage}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
 

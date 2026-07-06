@@ -46,6 +46,22 @@ export const schedulePost = async (req: Request, res: Response) => {
 
     await Promise.all(
         targetsToSchedule.map(async (target) => {
+            // Rescheduling: remove any existing pending job for this target so a
+            // re-schedule doesn't leave a duplicate that also fires.
+            const existingJobs = await prisma.scheduledJob.findMany({
+                where: { postTargetId: target.id, status: 'PENDING' },
+            })
+            await Promise.all(
+                existingJobs.map(async (sj) => {
+                    const oldJob = await postPublishQueue.getJob(sj.jobId)
+                    if (oldJob) await oldJob.remove()
+                    await prisma.scheduledJob.update({
+                        where: { id: sj.id },
+                        data: { status: 'CANCELLED' },
+                    })
+                })
+            )
+
             const job = await postPublishQueue.add(
                 'publish-post',
                 {
