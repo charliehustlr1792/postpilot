@@ -3,8 +3,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Eye, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import CreatePostModal from '@/components/posts/CreatePostModal';
+import { PostPreview } from '@/components/posts/PostPreview';
 import { api } from '@/lib/api';
 import { Platform, PostStatus } from '@/types/post';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -30,20 +32,29 @@ const formatTime = (d: Date) =>
 
 const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// Colored time + content block used in the month and week grids.
+// Colored time + content block used in the month and week grids. Draggable in
+// the month grid for rescheduling.
 const EntryChip = ({
   entry,
   onSelect,
+  draggable,
+  onDragStart,
 }: {
   entry: CalendarEntry;
   onSelect: (e: CalendarEntry) => void;
+  draggable?: boolean;
+  onDragStart?: (e: CalendarEntry) => void;
 }) => (
   <div
+    draggable={draggable}
+    onDragStart={draggable ? () => onDragStart?.(entry) : undefined}
     onClick={(e) => {
       e.stopPropagation();
       onSelect(entry);
     }}
-    className="group p-2 rounded-lg text-white text-xs font-medium truncate transition-all hover:scale-105 cursor-pointer"
+    className={`group p-2 rounded-lg text-white text-xs font-medium truncate transition-all hover:scale-105 ${
+      draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+    }`}
     style={{ backgroundColor: PLATFORM_COLORS[entry.platform] }}
   >
     <div className="flex items-center gap-1">
@@ -61,6 +72,17 @@ const CalendarPage = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<CalendarEntry | null>(null);
+  const [showEntryPreview, setShowEntryPreview] = useState(false);
+
+  // Drag-and-drop rescheduling (month grid).
+  const [draggingEntry, setDraggingEntry] = useState<CalendarEntry | null>(null);
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+  const [reschedulingId, setReschedulingId] = useState<string | null>(null);
+
+  const closePostDetail = () => {
+    setSelectedPost(null);
+    setShowEntryPreview(false);
+  };
 
   const [entries, setEntries] = useState<CalendarEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -162,6 +184,38 @@ const CalendarPage = () => {
 
   const goToToday = () => {
     setCurrentDate(new Date());
+  };
+
+  // Drop a dragged entry onto a day: reschedule that target to the new day,
+  // keeping its original time. Rejects past dates and same-day no-ops.
+  const handleDropOnDay = async (day: Date) => {
+    const entry = draggingEntry;
+    setDraggingEntry(null);
+    setDragOverKey(null);
+    if (!entry || dayKey(day) === dayKey(entry.scheduledAt)) return;
+
+    const newDate = new Date(day);
+    newDate.setHours(entry.scheduledAt.getHours(), entry.scheduledAt.getMinutes(), 0, 0);
+    if (newDate <= new Date()) {
+      toast.error('Cannot reschedule to a past date.');
+      return;
+    }
+
+    try {
+      setReschedulingId(entry.id);
+      const token = await getToken();
+      await api.schedulePost(
+        entry.postId,
+        { scheduledAt: newDate.toISOString(), targetIds: [entry.id] },
+        token,
+      );
+      toast.success('Post rescheduled');
+      await loadScheduled();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to reschedule');
+    } finally {
+      setReschedulingId(null);
+    }
   };
 
   const headerLabel =
@@ -274,14 +328,22 @@ const CalendarPage = () => {
                 const isSelected = selectedDate && day.toDateString() === selectedDate.toDateString();
                 const hasPosts = dayPosts.length > 0;
 
+                const isDragOver = dragOverKey === dayKey(day);
+
                 return (
                   <div
                     key={index}
                     onClick={() => setSelectedDate(day)}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      if (draggingEntry) setDragOverKey(dayKey(day));
+                    }}
+                    onDragLeave={() => setDragOverKey((k) => (k === dayKey(day) ? null : k))}
+                    onDrop={() => handleDropOnDay(day)}
                     className={`min-h-[120px] p-2 sm:p-3 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
                       isCurrentMonth ? 'border-[#EAE7E4]' : 'border-[#EAE7E4]/40 bg-[#F3EFEC]/30'
                     } ${
-                      isToday ? 'border-[#FF6E00] bg-[#FF9B4F]/5' : ''
+                      isDragOver ? 'border-[#FF6E00] border-dashed bg-[#FF9B4F]/10' : isToday ? 'border-[#FF6E00] bg-[#FF9B4F]/5' : ''
                     } ${
                       isSelected ? 'border-[#FF9B4F] shadow-lg scale-[1.02]' : 'hover:border-[#FFD4B2] hover:shadow-md'
                     }`}
@@ -305,7 +367,13 @@ const CalendarPage = () => {
                     {/* Scheduled Posts */}
                     <div className="space-y-1">
                       {dayPosts.slice(0, 3).map((post) => (
-                        <EntryChip key={post.id} entry={post} onSelect={setSelectedPost} />
+                        <EntryChip
+                          key={post.id}
+                          entry={post}
+                          onSelect={setSelectedPost}
+                          draggable={reschedulingId === null}
+                          onDragStart={setDraggingEntry}
+                        />
                       ))}
                       {dayPosts.length > 3 && (
                         <div className="text-xs text-[#4D4946]/60 text-center py-1">
@@ -411,7 +479,7 @@ const CalendarPage = () => {
 
       {/* Selected Date Details Sidebar */}
       {selectedDate && (
-        <div className="fixed right-0 top-16 bottom-0 w-80 bg-white border-l border-[#EAE7E4] p-6 shadow-2xl animate-in slide-in-from-right duration-300 overflow-y-auto">
+        <div className="fixed right-0 top-16 bottom-0 w-full sm:w-80 bg-white border-l border-[#EAE7E4] p-6 shadow-2xl animate-in slide-in-from-right duration-300 overflow-y-auto">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-[#181817]">
               {selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
@@ -470,10 +538,10 @@ const CalendarPage = () => {
       {selectedPost && (
         <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-          onClick={() => setSelectedPost(null)}
+          onClick={closePostDetail}
         >
           <div
-            className="bg-white rounded-2xl p-6 max-w-md w-full animate-in fade-in slide-in-from-bottom duration-300"
+            className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto animate-in fade-in slide-in-from-bottom duration-300"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
@@ -485,7 +553,7 @@ const CalendarPage = () => {
                 <span>{PLATFORM_LABELS[selectedPost.platform]}</span>
               </div>
               <button
-                onClick={() => setSelectedPost(null)}
+                onClick={closePostDetail}
                 className="p-2 hover:bg-[#F3EFEC] rounded-lg transition-colors"
               >
                 <ChevronRight className="w-5 h-5 text-[#4D4946]" />
@@ -507,19 +575,28 @@ const CalendarPage = () => {
               </div>
 
               <div>
-                <p className="text-[#4D4946] text-xs font-medium mb-2">Content</p>
-                <p className="text-[#181817] text-sm leading-relaxed">
-                  {selectedPost.content}
+                <p className="text-[#4D4946] text-xs font-medium mb-2">
+                  {showEntryPreview ? `${PLATFORM_LABELS[selectedPost.platform]} preview` : 'Content'}
                 </p>
+                {showEntryPreview ? (
+                  <PostPreview platform={selectedPost.platform} content={selectedPost.content} />
+                ) : (
+                  <p className="text-[#181817] text-sm leading-relaxed whitespace-pre-wrap">
+                    {selectedPost.content}
+                  </p>
+                )}
               </div>
 
               <div className="flex gap-2 pt-4">
                 <button className="flex-1 px-4 py-2 bg-[#F3EFEC] text-[#4D4946] font-medium rounded-lg hover:bg-[#EAE7E4] transition-colors">
                   Edit
                 </button>
-                <button className="flex-1 px-4 py-2 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-medium rounded-lg hover:shadow-lg transition-all">
+                <button
+                  onClick={() => setShowEntryPreview((v) => !v)}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-medium rounded-lg hover:shadow-lg transition-all"
+                >
                   <Eye className="w-4 h-4 inline mr-1" />
-                  Preview
+                  {showEntryPreview ? 'Hide preview' : 'Preview'}
                 </button>
               </div>
             </div>
