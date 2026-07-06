@@ -41,6 +41,11 @@ app.use(express.json());
 app.get('/', (req, res) => {
   res.send('PostPilot API running...');
 });
+
+// Health check for the platform's uptime probe (Render healthCheckPath).
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
 app.use('/api',userRoutes);
 app.use('/api', socialAccountRoutes);
 app.use('/api', postRoutes);
