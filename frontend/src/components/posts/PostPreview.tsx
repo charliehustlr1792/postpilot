@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { Heart, MessageCircle, Repeat2, Send, ThumbsUp, Bookmark, MoreHorizontal, Globe } from 'lucide-react';
 import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import { getCharacterLimit } from '@/lib/utils';
-import { PlatformIcon } from '@/components/ui/PlatformIcon';
 import { Platform } from '@/types/post';
 
 interface PostPreviewProps {

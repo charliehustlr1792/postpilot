@@ -125,19 +125,27 @@ const AnalyticsPage = () => {
 
   const COLORS = ['#FF6E00', '#FF9B4F', '#FFB67D', '#FFD4B2'];
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({
+    active,
+    payload,
+    label,
+  }: {
+    active?: boolean;
+    payload?: { name?: string; value?: number; color?: string }[];
+    label?: string;
+  }) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white border border-[#EAE7E4] rounded-lg p-3 shadow-lg">
           <p className="text-[#181817] font-semibold text-sm mb-2">{label}</p>
-          {payload.map((item: any, index: number) => (
+          {payload.map((item, index) => (
             <div key={index} className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
                 <span className="text-[#4D4946] text-xs capitalize">{item.name}:</span>
               </div>
               <span className="text-[#181817] font-semibold text-xs">
-                {formatNumber(item.value)}
+                {formatNumber(item.value ?? 0)}
               </span>
             </div>
           ))}
