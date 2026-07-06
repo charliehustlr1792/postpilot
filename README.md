@@ -23,3 +23,17 @@
 ![Redis](https://img.shields.io/badge/Redis-FF4438?style=for-the-badge&logo=redis&logoColor=white)
 ![BullMQ](https://img.shields.io/badge/BullMQ-EF4444?style=for-the-badge&logo=bull&logoColor=white)
 ![Clerk](https://img.shields.io/badge/Clerk-6C47FF?style=for-the-badge&logo=clerk&logoColor=white)
+
+## Run with Docker
+
+Runs the full stack locally: frontend, backend, Postgres, and Redis.
+
+1. Fill in `backend/.env` and `frontend/.env` (see the matching `.env.example` files).
+2. Copy `.env.example` to `.env` in the project root and set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (the frontend build needs it).
+3. Start everything:
+
+   ```
+   docker compose up --build
+   ```
+
+The frontend is at http://localhost:3000 and the backend at http://localhost:5000. The backend applies database migrations on start and runs the background job worker in the same container. Postgres and Redis data persist in named volumes.

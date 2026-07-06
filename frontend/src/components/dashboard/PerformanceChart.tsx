@@ -32,24 +32,30 @@ const PerformanceChart = () => {
 
   const chartData = data[timeRange];
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({
+    active,
+    payload,
+  }: {
+    active?: boolean;
+    payload?: { value?: number; payload?: { date?: string } }[];
+  }) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white border border-[#EAE7E4] rounded-lg p-3 shadow-lg">
-          <p className="text-[#181817] font-semibold text-sm mb-2">{payload[0].payload.date}</p>
+          <p className="text-[#181817] font-semibold text-sm mb-2">{payload[0].payload?.date}</p>
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-[#FF6E00]" />
               <span className="text-[#4D4946] text-xs">Views:</span>
               <span className="text-[#181817] font-semibold text-xs">
-                {payload[0].value.toLocaleString()}
+                {(payload[0].value ?? 0).toLocaleString()}
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-[#FF9B4F]" />
               <span className="text-[#4D4946] text-xs">Engagement:</span>
               <span className="text-[#181817] font-semibold text-xs">
-                {payload[1].value.toLocaleString()}
+                {(payload[1].value ?? 0).toLocaleString()}
               </span>
             </div>
           </div>

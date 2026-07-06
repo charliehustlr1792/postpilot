@@ -1,1 +1,4 @@
 ROADMAP.md
+
+# Root env for docker compose interpolation (not the app env files)
+.env
