@@ -1,0 +1,70 @@
+# Render Blueprint for the PostPilot backend (Express API + BullMQ workers run in
+# one web service). The frontend deploys separately to Vercel.
+#
+# Build: npm install triggers `postinstall` (prisma generate), then `npm run
+# build` compiles TypeScript and copies the generated Prisma client into dist/.
+# `prisma migrate deploy` applies pending migrations before the new version
+# serves traffic. Set the secret env vars (sync:false) in the Render dashboard.
+services:
+  - type: web
+    name: postpilot-backend
+    runtime: node
+    rootDir: backend
+    region: singapore
+    plan: free
+    branch: main
+    buildCommand: npm install && npm run build && npx prisma migrate deploy
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Clerk
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_WEBHOOK_SECRET
+        sync: false
+      # Database & Redis
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      # Public app origin (CORS + OAuth redirect base)
+      - key: FRONTEND_URL
+        sync: false
+      # Token encryption + OAuth state signing
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false
+      - key: OAUTH_STATE_SECRET
+        sync: false
+      # Social platform OAuth credentials
+      - key: TWITTER_CLIENT_ID
+        sync: false
+      - key: TWITTER_CLIENT_SECRET
+        sync: false
+      - key: LINKEDIN_CLIENT_ID
+        sync: false
+      - key: LINKEDIN_CLIENT_SECRET
+        sync: false
+      - key: FACEBOOK_CLIENT_ID
+        sync: false
+      - key: FACEBOOK_CLIENT_SECRET
+        sync: false
+      - key: INSTAGRAM_CLIENT_ID
+        sync: false
+      - key: INSTAGRAM_CLIENT_SECRET
+        sync: false
+      # Media storage (Cloudinary)
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      # Email (Resend)
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
