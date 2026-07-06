@@ -28,6 +28,25 @@ model User {
   accounts  SocialAccount[]
   posts     Post[]
   analytics Analytics[]
+  teamMembers TeamMember[]
+}
+
+// A member of a workspace owner's team. Invited by email; roles are stored for
+// per-member permissions (cross-app enforcement is a later step).
+model TeamMember {
+  id        String           @id @default(cuid())
+  email     String
+  role      TeamRole         @default(VIEWER)
+  status    TeamMemberStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  // The workspace owner who invited this member.
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // one invite per email per workspace
+  @@unique([ownerId, email])
 }
 
 model SocialAccount {
@@ -161,4 +180,15 @@ enum Plan {
   FREE
   PRO
   ENTERPRISE
+}
+
+enum TeamRole {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum TeamMemberStatus {
+  PENDING
+  ACTIVE
 }
