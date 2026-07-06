@@ -2,15 +2,20 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { User, Bell, CreditCard, Users, Smartphone, Shield, Trash2, Plus, Loader2 } from 'lucide-react';
-import { useUser } from '@clerk/nextjs';
+import { User, Bell, CreditCard, Users, Smartphone, Shield, Trash2, Plus, Loader2, X, Mail } from 'lucide-react';
+import { useUser, useAuth } from '@clerk/nextjs';
 import { toast } from 'sonner';
 import { PLATFORM_COLORS} from '@/lib/constants';
 import { Platform } from '@/types/post';
 import { PlatformIcon } from '@/components/ui/PlatformIcon';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { useTeam } from '@/hooks/useTeam';
+import { api } from '@/lib/api';
+import type { TeamRole } from '@/types/team';
 
 const SettingsPage = () => {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
@@ -77,6 +82,66 @@ const SettingsPage = () => {
     }
   };
 
+  // Team state.
+  const { members, isLoading: teamLoading, error: teamError, refetch: refetchTeam } = useTeam();
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<TeamRole>('VIEWER');
+  const [inviting, setInviting] = useState(false);
+  const [busyMemberId, setBusyMemberId] = useState<string | null>(null);
+
+  const handleInvite = async () => {
+    const email = inviteEmail.trim();
+    if (!email) return;
+    try {
+      setInviting(true);
+      const token = await getToken();
+      const { emailed } = await api.inviteMember({ email, role: inviteRole }, token);
+      toast.success(
+        emailed
+          ? `Invitation sent to ${email}`
+          : `Invite created for ${email} (email delivery not configured)`,
+      );
+      setInviteOpen(false);
+      setInviteEmail('');
+      setInviteRole('VIEWER');
+      await refetchTeam();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to invite member');
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const handleRoleChange = async (memberId: string, role: TeamRole) => {
+    try {
+      setBusyMemberId(memberId);
+      const token = await getToken();
+      await api.updateMemberRole(memberId, role, token);
+      await refetchTeam();
+      toast.success('Role updated');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update role');
+    } finally {
+      setBusyMemberId(null);
+    }
+  };
+
+  const handleRemoveMember = async (memberId: string) => {
+    if (!window.confirm('Remove this team member?')) return;
+    try {
+      setBusyMemberId(memberId);
+      const token = await getToken();
+      await api.removeMember(memberId, token);
+      await refetchTeam();
+      toast.success('Member removed');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove member');
+    } finally {
+      setBusyMemberId(null);
+    }
+  };
+
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'accounts', label: 'Connected Accounts', icon: Smartphone },
@@ -93,13 +158,6 @@ const SettingsPage = () => {
     { platform: 'LINKEDIN',  username: 'John Doe',  connected: true,  posts: 28 },
     { platform: 'FACEBOOK',  username: 'John Doe',  connected: false, posts: 0  },
   ] as const;
-
-  // Mock team members - replace with real data
-  const teamMembers = [
-    { id: '1', name: 'Sarah Chen', email: 'sarah@company.com', role: 'Admin', avatar: 'SC' },
-    { id: '2', name: 'Mike Johnson', email: 'mike@company.com', role: 'Editor', avatar: 'MJ' },
-    { id: '3', name: 'Emma Davis', email: 'emma@company.com', role: 'Viewer', avatar: 'ED' },
-  ];
 
   const renderContent = () => {
     switch (activeTab) {
@@ -385,40 +443,72 @@ const SettingsPage = () => {
                 <h2 className="text-xl font-bold text-[#181817] mb-2">Team Members</h2>
                 <p className="text-[#4D4946] text-sm">Manage who has access to your workspace</p>
               </div>
-              <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-semibold rounded-lg hover:shadow-lg transition-all">
+              <button
+                onClick={() => setInviteOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-semibold rounded-lg hover:shadow-lg transition-all"
+              >
                 <Plus className="w-4 h-4" />
                 Invite Member
               </button>
             </div>
 
-            <div className="bg-white rounded-xl border border-[#EAE7E4] overflow-hidden">
-              {teamMembers.map((member, index) => (
-                <div key={member.id} className={`p-6 flex items-center justify-between ${index !== teamMembers.length - 1 ? 'border-b border-[#EAE7E4]' : ''}`}>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FF9B4F] to-[#FF6E00] flex items-center justify-center text-white font-bold">
-                      {member.avatar}
+            {teamError ? (
+              <ErrorState title="Couldn't load your team" message={teamError} onRetry={refetchTeam} />
+            ) : teamLoading ? (
+              <div className="flex items-center gap-2 text-[#4D4946] text-sm py-6">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading team...
+              </div>
+            ) : members.length === 0 ? (
+              <div className="bg-white rounded-xl border-2 border-dashed border-[#EAE7E4] p-10 text-center">
+                <Users className="w-12 h-12 text-[#4D4946]/30 mx-auto mb-3" />
+                <p className="text-[#181817] font-semibold text-sm mb-1">No team members yet</p>
+                <p className="text-[#4D4946]/70 text-sm">Invite someone to collaborate on your workspace</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-[#EAE7E4] overflow-hidden">
+                {members.map((member, index) => (
+                  <div key={member.id} className={`p-6 flex items-center justify-between gap-4 ${index !== members.length - 1 ? 'border-b border-[#EAE7E4]' : ''}`}>
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FF9B4F] to-[#FF6E00] flex items-center justify-center text-white font-bold uppercase shrink-0">
+                        {member.email.slice(0, 2)}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-[#181817] font-semibold truncate">{member.email}</h4>
+                        <span className={`inline-block mt-0.5 text-xs font-medium px-2 py-0.5 rounded-full ${
+                          member.status === 'ACTIVE' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
+                        }`}>
+                          {member.status === 'ACTIVE' ? 'Active' : 'Pending'}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-[#181817] font-semibold">{member.name}</h4>
-                      <p className="text-[#4D4946] text-sm">{member.email}</p>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <select
+                        value={member.role}
+                        disabled={busyMemberId === member.id}
+                        onChange={(e) => handleRoleChange(member.id, e.target.value as TeamRole)}
+                        className="px-3 py-1.5 border border-[#EAE7E4] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#FF9B4F] disabled:opacity-50"
+                      >
+                        <option value="ADMIN">Admin</option>
+                        <option value="EDITOR">Editor</option>
+                        <option value="VIEWER">Viewer</option>
+                      </select>
+                      <button
+                        onClick={() => handleRemoveMember(member.id)}
+                        disabled={busyMemberId === member.id}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {busyMemberId === member.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <select
-                      defaultValue={member.role}
-                      className="px-3 py-1.5 border border-[#EAE7E4] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#FF9B4F]"
-                    >
-                      <option>Admin</option>
-                      <option>Editor</option>
-                      <option>Viewer</option>
-                    </select>
-                    <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         );
 
@@ -518,6 +608,78 @@ const SettingsPage = () => {
           {renderContent()}
         </div>
       </div>
+
+      {/* Invite Member Modal */}
+      {inviteOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
+          onClick={() => !inviting && setInviteOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-md animate-in slide-in-from-bottom duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-[#EAE7E4]">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#FF9B4F] to-[#FF6E00] flex items-center justify-center text-white">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold text-[#181817]">Invite a team member</h3>
+              </div>
+              <button
+                onClick={() => setInviteOpen(false)}
+                disabled={inviting}
+                className="p-2 hover:bg-[#F3EFEC] rounded-lg transition-colors disabled:opacity-50"
+              >
+                <X className="w-5 h-5 text-[#4D4946]" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-[#181817] font-semibold text-sm mb-1.5">Email address</label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="teammate@company.com"
+                  className="w-full px-4 py-2.5 border-2 border-[#EAE7E4] rounded-xl text-[#181817] focus:outline-none focus:border-[#FF9B4F] transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-[#181817] font-semibold text-sm mb-1.5">Role</label>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as TeamRole)}
+                  className="w-full px-4 py-2.5 border-2 border-[#EAE7E4] rounded-xl text-[#181817] focus:outline-none focus:border-[#FF9B4F] transition-colors"
+                >
+                  <option value="ADMIN">Admin</option>
+                  <option value="EDITOR">Editor</option>
+                  <option value="VIEWER">Viewer</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-[#EAE7E4] bg-[#F3EFEC]/30">
+              <button
+                onClick={() => setInviteOpen(false)}
+                disabled={inviting}
+                className="px-5 py-2.5 text-[#4D4946] font-medium hover:bg-white rounded-lg transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleInvite}
+                disabled={inviting || !inviteEmail.trim()}
+                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-semibold rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {inviting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                {inviting ? 'Sending...' : 'Send invite'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

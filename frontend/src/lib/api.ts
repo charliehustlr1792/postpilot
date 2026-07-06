@@ -1,4 +1,5 @@
 import type {Post,SocialAccount,User,Plan,PostStatus,Platform,PostAnalytics,} from '@/types/post';
+import type { TeamMember, TeamRole } from '@/types/team';
 
 export class ApiError extends Error {
   constructor(
@@ -162,6 +163,27 @@ export interface DashboardOverviewResponse {
     engagementRate: number;
     scheduledPosts: number;
   };
+}
+
+// GET /api/team
+export interface TeamResponse {
+  members: TeamMember[];
+}
+
+// POST /api/team/invite
+export interface InviteMemberResponse {
+  member: TeamMember;
+  emailed: boolean;
+}
+
+// PATCH /api/team/:id
+export interface TeamMemberResponse {
+  member: TeamMember;
+}
+
+export interface InviteMemberBody {
+  email: string;
+  role?: TeamRole;
 }
 
 // ---------------------------------------------------------------------------
@@ -428,6 +450,36 @@ export const api = {
 
   getDashboardOverview(token?: string | null) {
     return apiFetch<DashboardOverviewResponse>('/api/dashboard/overview', {}, token);
+  },
+
+  // ---- Team ----------------------------------------------------------------
+
+  getTeam(token?: string | null) {
+    return apiFetch<TeamResponse>('/api/team', {}, token);
+  },
+
+  inviteMember(body: InviteMemberBody, token?: string | null) {
+    return apiFetch<InviteMemberResponse>(
+      '/api/team/invite',
+      { method: 'POST', body: JSON.stringify(body) },
+      token,
+    );
+  },
+
+  updateMemberRole(memberId: string, role: TeamRole, token?: string | null) {
+    return apiFetch<TeamMemberResponse>(
+      `/api/team/${memberId}`,
+      { method: 'PATCH', body: JSON.stringify({ role }) },
+      token,
+    );
+  },
+
+  removeMember(memberId: string, token?: string | null) {
+    return apiFetch<{ message: string; member: TeamMember }>(
+      `/api/team/${memberId}`,
+      { method: 'DELETE' },
+      token,
+    );
   },
 
   getMyStats(token?: string | null) {
