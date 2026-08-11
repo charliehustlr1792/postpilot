@@ -12,6 +12,8 @@ import Button from '@/components/ui/Button'
 import Link from 'next/link'
 import React from 'react'
 import type { Metadata } from 'next'
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 
 // Inherits the marketing title/description/OG from the root layout; just pins
 // the canonical URL for the landing page.
@@ -19,7 +21,13 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
 }
 
-const HomePage = () => {
+const HomePage = async () => {
+  const userId = await auth()
+
+  if (userId) {
+    redirect('/dashboard')
+  }
+
   return (
     <>
       <div className='relative w-full min-h-screen bg-[#F3EFEC] overflow-hidden pt-[90px] pb-20'>
