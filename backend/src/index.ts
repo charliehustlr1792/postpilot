@@ -15,10 +15,7 @@ import uploadRoutes from './routes/uploadRoutes'
 import dashboardRoutes from './routes/dashboardRoutes'
 import teamRoutes from './routes/teamRoutes'
 import webhookRoutes from './routes/webhookRoutes'
-import {postPublishQueue} from './lib/queue'
-import {processPostPublish} from './jobs/postPublishProcessor'
 import { clerkClient,clerkMiddleware,requireAuth,getAuth } from '@clerk/express';
-import { scheduleAnalyticsSync } from './workers'
 import { notFound, errorHandler } from './middleware/errorHandler'
 
 dotenv.config();
@@ -93,10 +90,18 @@ app.get('/api/test-db',async(req,res)=>{
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const PORT = Number(process.env.PORT || 5000);
 
-// Register the recurring analytics-sync job (idempotent across restarts).
-scheduleAnalyticsSync().catch((err) =>
-  console.error('Failed to schedule analytics sync:', err)
-);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+
+  // Start the worker layer after the HTTP server is already accepting traffic.
+  // That keeps Render's port scan happy even if Redis is slow or unavailable.
+  void import('./workers')
+    .then(async ({ scheduleAnalyticsSync }) => {
+      await scheduleAnalyticsSync();
+    })
+    .catch((err) => {
+      console.error('Failed to start workers or schedule analytics sync:', err);
+    });
+});
