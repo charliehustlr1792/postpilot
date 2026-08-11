@@ -25,7 +25,7 @@ const RecentActivity = () => {
     {
       id: '1',
       type: 'published',
-      platform: 'twitter',
+      platform: 'TWITTER',
       content: 'Just launched our new AI-powered analytics dashboard! 🚀 #tech #analytics',
       timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 min ago
       metrics: { views: 2450, engagement: 89 },
@@ -33,7 +33,7 @@ const RecentActivity = () => {
     {
       id: '2',
       type: 'published',
-      platform: 'instagram',
+      platform: 'INSTAGRAM',
       content: 'Behind the scenes of our product development process. Swipe to see more! 📱',
       timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
       metrics: { views: 3200, engagement: 156 },
@@ -41,14 +41,14 @@ const RecentActivity = () => {
     {
       id: '3',
       type: 'scheduled',
-      platform: 'linkedin',
+      platform: 'LINKEDIN',
       content: 'Excited to share our company\'s growth story and what\'s next for our team! 💼',
       timestamp: new Date(Date.now() + 1000 * 60 * 60 * 4), // 4 hours from now
     },
     {
       id: '4',
       type: 'published',
-      platform: 'facebook',
+      platform: 'FACEBOOK',
       content: 'Weekend vibes! What\'s everyone working on? Drop your projects below ⬇️',
       timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
       metrics: { views: 5600, engagement: 234 },

@@ -17,11 +17,11 @@ const CalendarPreview = () => {
 
   // Mock scheduled posts - replace with real data
   const scheduledPosts: ScheduledPost[] = [
-    { id: '1', date: '2025-01-15', platform: 'twitter', time: '14:30' },
-    { id: '2', date: '2025-01-16', platform: 'instagram', time: '18:00' },
-    { id: '3', date: '2025-01-16', platform: 'linkedin', time: '09:00' },
-    { id: '4', date: '2025-01-18', platform: 'facebook', time: '16:00' },
-    { id: '5', date: '2025-01-20', platform: 'twitter', time: '12:00' },
+    { id: '1', date: '2025-01-15', platform: 'TWITTER', time: '14:30' },
+    { id: '2', date: '2025-01-16', platform: 'INSTAGRAM', time: '18:00' },
+    { id: '3', date: '2025-01-16', platform: 'LINKEDIN', time: '09:00' },
+    { id: '4', date: '2025-01-18', platform: 'FACEBOOK', time: '16:00' },
+    { id: '5', date: '2025-01-20', platform: 'TWITTER', time: '12:00' },
   ];
 
   const today = new Date();

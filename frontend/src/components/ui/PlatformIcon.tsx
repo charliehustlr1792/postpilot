@@ -10,7 +10,8 @@ export function PlatformIcon({
   platform: Platform;
   className?: string;
 }) {
-  const Icon = PLATFORM_ICONS[platform];
+  const normalizedPlatform = platform.toUpperCase() as Platform;
+  const Icon = PLATFORM_ICONS[normalizedPlatform] ?? PLATFORM_ICONS.TWITTER;
   return <Icon className={className} />;
 }
 
