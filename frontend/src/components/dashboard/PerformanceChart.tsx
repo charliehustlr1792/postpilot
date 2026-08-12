@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
-import { TrendingUp, BarChart3 } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/Skeleton';
