@@ -59,3 +59,11 @@ export function getProviderConfig(platform: Platform): OAuthProviderConfig {
         redirectUri: buildRedirectUri(platform),
     };
 }
+
+/** Platforms whose client id and secret are both set — the ones the UI can offer to connect. */
+export function listConfiguredPlatforms(): Platform[] {
+    return (Object.values(Platform) as Platform[]).filter((platform) => {
+        const config = getProviderConfig(platform);
+        return Boolean(config.clientId && config.clientSecret);
+    });
+}

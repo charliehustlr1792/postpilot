@@ -8,7 +8,7 @@ import NotificationsDropdown from './NotificationsDropdown';
 const DashboardHeader = () => {
   const { user } = useUser();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [unreadCount] = useState(3); // This would come from your notifications state
+  const unreadCount = 0;
 
   // Get greeting based on time of day
   const getGreeting = () => {

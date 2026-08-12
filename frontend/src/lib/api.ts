@@ -112,6 +112,7 @@ export interface AnalyticsTrendsResponse {
 // GET /api/accounts
 export interface AccountsResponse {
   accounts: SocialAccount[];
+  availablePlatforms: Platform[];
 }
 
 // POST /api/accounts/connect
@@ -163,6 +164,8 @@ export interface DashboardOverviewResponse {
     engagementRate: number;
     scheduledPosts: number;
   };
+  connectedAccountCount: number;
+  availablePlatforms: Platform[];
 }
 
 // GET /api/team
@@ -262,27 +265,57 @@ async function apiFetch<T>(
   // its boundary); only default to JSON otherwise.
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers: Record<string, string> = {
+    Accept: 'application/json',
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers as Record<string, string>),
   };
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  // Do not follow Clerk/HTML redirects — a 302 to sign-in would otherwise
+  // become a 200 HTML page and look like a successful empty JSON body.
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers,
+    redirect: 'manual',
+  });
+
+  if (res.status >= 300 && res.status < 400) {
+    throw new ApiError(
+      401,
+      'Not authenticated (API redirected to sign-in). Check that the Clerk keys match on frontend and backend, and that BACKEND_INTERNAL_URL points at the Express server.',
+    );
+  }
 
   // 204 No Content — return undefined cast to T
   if (res.status === 204) return undefined as T;
 
-  let body: unknown;
-  try {
-    body = await res.json();
-  } catch {
-    body = null;
+  const contentType = res.headers.get('content-type') ?? '';
+  const isJson = contentType.includes('application/json');
+
+  let body: unknown = null;
+  if (isJson) {
+    try {
+      body = await res.json();
+    } catch {
+      body = null;
+    }
+  } else {
+    // Drain the body so the socket can be reused; ignore the HTML/text payload.
+    await res.text().catch(() => undefined);
   }
 
   if (!res.ok) {
     const message =
       (body as { error?: string })?.error ?? res.statusText ?? 'Request failed';
     throw new ApiError(res.status, message, body);
+  }
+
+  if (!isJson || body === null || typeof body !== 'object') {
+    throw new ApiError(
+      res.status,
+      'The API did not return JSON. Set BACKEND_INTERNAL_URL on the frontend host to your backend origin so /api is proxied correctly.',
+      body,
+    );
   }
 
   return body as T;

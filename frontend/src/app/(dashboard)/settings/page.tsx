@@ -2,14 +2,16 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { User, Bell, CreditCard, Users, Smartphone, Shield, Trash2, Plus, Loader2, X, Mail } from 'lucide-react';
 import { useUser, useAuth } from '@clerk/nextjs';
 import { toast } from 'sonner';
-import { PLATFORM_COLORS} from '@/lib/constants';
+import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
 import { Platform } from '@/types/post';
 import { PlatformIcon } from '@/components/ui/PlatformIcon';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { useTeam } from '@/hooks/useTeam';
+import { useAccounts } from '@/hooks/useAccounts';
 import { api } from '@/lib/api';
 import type { TeamRole } from '@/types/team';
 
@@ -84,6 +86,7 @@ const SettingsPage = () => {
 
   // Team state.
   const { members, isLoading: teamLoading, error: teamError, refetch: refetchTeam } = useTeam();
+  const { accounts, isLoading: accountsLoading, error: accountsError, refetch: refetchAccounts } = useAccounts();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<TeamRole>('VIEWER');
@@ -150,14 +153,6 @@ const SettingsPage = () => {
     { id: 'team', label: 'Team', icon: Users },
     { id: 'security', label: 'Security', icon: Shield },
   ];
-
-  // Mock connected accounts — replace with real data in Sprint 2.
-  const connectedAccounts = [
-    { platform: 'TWITTER',   username: '@johndoe',  connected: true,  posts: 45 },
-    { platform: 'INSTAGRAM', username: 'johndoe',   connected: true,  posts: 32 },
-    { platform: 'LINKEDIN',  username: 'John Doe',  connected: true,  posts: 28 },
-    { platform: 'FACEBOOK',  username: 'John Doe',  connected: false, posts: 0  },
-  ] as const;
 
   const renderContent = () => {
     switch (activeTab) {
@@ -261,56 +256,64 @@ const SettingsPage = () => {
       case 'accounts':
         return (
           <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-bold text-[#181817] mb-2">Connected Accounts</h2>
-              <p className="text-[#4D4946] text-sm">Manage your social media connections</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-bold text-[#181817] mb-2">Connected Accounts</h2>
+                <p className="text-[#4D4946] text-sm">Manage your social media connections</p>
+              </div>
+              <Link
+                href="/accounts"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-semibold rounded-lg text-sm hover:shadow-lg transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                Manage accounts
+              </Link>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {connectedAccounts.map((account) => (
-                <div key={account.platform} className="bg-white rounded-xl border border-[#EAE7E4] p-6 hover:border-[#FF9B4F] transition-all">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
-                        style={{ backgroundColor: PLATFORM_COLORS[account.platform as keyof typeof PLATFORM_COLORS] }}
-                      >
-                        <PlatformIcon platform={account.platform as Platform} className="w-6 h-6" />
+            {accountsError ? (
+              <ErrorState title="Couldn't load accounts" message={accountsError} onRetry={refetchAccounts} />
+            ) : accountsLoading ? (
+              <p className="text-[#4D4946] text-sm">Loading accounts...</p>
+            ) : accounts.length === 0 ? (
+              <div className="bg-white rounded-xl border border-dashed border-[#EAE7E4] p-8 text-center">
+                <p className="text-[#181817] font-semibold text-sm mb-1">No accounts connected yet</p>
+                <p className="text-[#4D4946]/70 text-sm mb-4">
+                  Connect X or LinkedIn to start publishing. Instagram and Facebook are coming soon.
+                </p>
+                <Link
+                  href="/accounts"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-semibold rounded-lg text-sm"
+                >
+                  Connect an account
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {accounts.map((account) => (
+                  <div key={account.id} className="bg-white rounded-xl border border-[#EAE7E4] p-6">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
+                          style={{ backgroundColor: PLATFORM_COLORS[account.platform] }}
+                        >
+                          <PlatformIcon platform={account.platform as Platform} className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h3 className="text-[#181817] font-semibold">
+                            {PLATFORM_LABELS[account.platform]}
+                          </h3>
+                          <p className="text-[#4D4946] text-sm">
+                            {account.displayName || `@${account.username}`}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-[#181817] font-semibold capitalize">{account.platform}</h3>
-                        {account.connected && (
-                          <p className="text-[#4D4946] text-sm">{account.username}</p>
-                        )}
-                      </div>
+                      <div className={`w-3 h-3 rounded-full ${account.isActive ? 'bg-green-500' : 'bg-gray-300'}`} />
                     </div>
-                    <div className={`w-3 h-3 rounded-full ${account.connected ? 'bg-green-500' : 'bg-gray-300'}`} />
                   </div>
-
-                  {account.connected ? (
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-[#4D4946] text-sm">Posts Published</span>
-                        <span className="text-[#181817] font-semibold">{account.posts}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <button className="flex-1 px-4 py-2 text-[#4D4946] font-medium bg-[#F3EFEC] hover:bg-[#EAE7E4] rounded-lg text-sm transition-colors">
-                          Disconnect
-                        </button>
-                        <button className="flex-1 px-4 py-2 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-medium rounded-lg text-sm hover:shadow-lg transition-all">
-                          Reconnect
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button className="w-full px-4 py-2 bg-gradient-to-r from-[#FF9B4F] to-[#FF6E00] text-white font-semibold rounded-lg hover:shadow-lg transition-all">
-                      <Plus className="w-4 h-4 inline mr-2" />
-                      Connect Account
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         );
 

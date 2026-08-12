@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth } from '@clerk/express';
+import { requireApiAuth } from '../middleware/requireApiAuth';
 import {
     getTeamMembers,
     inviteMember,
@@ -16,9 +16,9 @@ import {
 
 const router = Router();
 
-router.get('/team', requireAuth(), getTeamMembers);
-router.post('/team/invite', requireAuth(), writeLimiter, validate({ body: inviteMemberBodySchema }), inviteMember);
-router.patch('/team/:memberId', requireAuth(), validate({ params: memberIdParamsSchema, body: updateMemberRoleBodySchema }), updateMemberRole);
-router.delete('/team/:memberId', requireAuth(), validate({ params: memberIdParamsSchema }), removeMember);
+router.get('/team', requireApiAuth, getTeamMembers);
+router.post('/team/invite', requireApiAuth, writeLimiter, validate({ body: inviteMemberBodySchema }), inviteMember);
+router.patch('/team/:memberId', requireApiAuth, validate({ params: memberIdParamsSchema, body: updateMemberRoleBodySchema }), updateMemberRole);
+router.delete('/team/:memberId', requireApiAuth, validate({ params: memberIdParamsSchema }), removeMember);
 
 export default router;

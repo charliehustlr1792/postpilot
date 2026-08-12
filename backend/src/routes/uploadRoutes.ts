@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { requireAuth } from '@clerk/express';
+import { requireApiAuth } from '../middleware/requireApiAuth';
 import { uploadImage } from '../controllers/uploadController';
 import { writeLimiter } from '../middleware/rateLimit';
 
@@ -23,7 +23,7 @@ const router = Router();
 // handler yet).
 router.post(
     '/uploads',
-    requireAuth(),
+    requireApiAuth,
     writeLimiter,
     (req, res, next) => {
         upload.single('file')(req, res, (err) => {

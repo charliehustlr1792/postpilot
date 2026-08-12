@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { api, ApiError } from '@/lib/api';
-import type { SocialAccount } from '@/types/post';
+import type { Platform, SocialAccount } from '@/types/post';
 
 export interface UseAccountsResult {
   accounts: SocialAccount[];
+  availablePlatforms: Platform[];
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -22,6 +23,7 @@ function toMessage(err: unknown): string {
 export function useAccounts(): UseAccountsResult {
   const { getToken } = useAuth();
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
+  const [availablePlatforms, setAvailablePlatforms] = useState<Platform[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,9 +34,11 @@ export function useAccounts(): UseAccountsResult {
       const token = await getToken();
       const res = await api.getAccounts(token);
       setAccounts(res.accounts);
+      setAvailablePlatforms(res.availablePlatforms ?? ['TWITTER', 'LINKEDIN']);
     } catch (err) {
       setError(toMessage(err));
       setAccounts([]);
+      setAvailablePlatforms([]);
     } finally {
       setIsLoading(false);
     }
@@ -44,7 +48,7 @@ export function useAccounts(): UseAccountsResult {
     fetchAccounts();
   }, [fetchAccounts]);
 
-  return { accounts, isLoading, error, refetch: fetchAccounts };
+  return { accounts, availablePlatforms, isLoading, error, refetch: fetchAccounts };
 }
 
 export default useAccounts;

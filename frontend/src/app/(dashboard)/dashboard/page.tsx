@@ -8,10 +8,12 @@ import QuickActions from '@/components/dashboard/QuickActions';
 import RecentActivity from '@/components/dashboard/RecentActivity';
 import CalendarPreview from '@/components/dashboard/CalendarPreview';
 import PerformanceChart from '@/components/dashboard/PerformanceChart';
+import ConnectAccountsCard from '@/components/dashboard/ConnectAccountsCard';
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import { StatCardSkeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
+import type { Platform } from '@/types/post';
 
 interface DashboardStats {
   totalPosts: number;
@@ -21,33 +23,44 @@ interface DashboardStats {
 }
 
 const DashboardPage = () => {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [connectedAccountCount, setConnectedAccountCount] = useState(0);
+  const [availablePlatforms, setAvailablePlatforms] = useState<Platform[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadStats = useCallback(async () => {
+    if (!isLoaded) return;
     setIsLoading(true);
     setError(null);
     try {
       const token = await getToken();
-      // Single consolidated call — the endpoint computes all four stats server-side.
-      const { stats } = await api.getDashboardOverview(token);
-      setStats(stats);
+      if (!token) {
+        throw new Error('You need to be signed in to load dashboard stats');
+      }
+      const data = await api.getDashboardOverview(token);
+      if (!data?.stats) {
+        throw new Error('Dashboard stats were empty');
+      }
+      setStats(data.stats);
+      setConnectedAccountCount(data.connectedAccountCount ?? 0);
+      setAvailablePlatforms(data.availablePlatforms ?? ['TWITTER', 'LINKEDIN']);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard stats');
     } finally {
       setIsLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, isLoaded]);
 
   useEffect(() => {
     loadStats();
   }, [loadStats]);
 
+  const needsConnect = !isLoading && !error && connectedAccountCount === 0;
+
   return (
     <div className="space-y-6">
-      {/* Stats Grid */}
       {error ? (
         <ErrorState title="Couldn't load dashboard stats" message={error} onRetry={loadStats} />
       ) : (
@@ -74,31 +87,23 @@ const DashboardPage = () => {
         </div>
       )}
 
-      {/* Quick Actions */}
+      {needsConnect && <ConnectAccountsCard availablePlatforms={availablePlatforms} />}
+
       <QuickActions />
 
-      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Takes 2/3 on large screens */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Performance Chart */}
           <PerformanceChart />
-
-          {/* Recent Activity */}
           <RecentActivity />
         </div>
 
-        {/* Right Column - Takes 1/3 on large screens */}
         <div className="lg:col-span-1 space-y-6">
-          {/* Calendar Preview */}
           <CalendarPreview />
 
-          {/* Upgrade Card */}
           <div className="bg-gradient-to-br from-[#FF9B4F] to-[#FF6E00] rounded-xl p-6 text-white relative overflow-hidden">
-            {/* Decorative circles */}
             <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full" />
             <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full" />
-            
+
             <div className="relative z-10">
               <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4">
                 <TrendingUp className="w-6 h-6 text-white" />

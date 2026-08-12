@@ -11,7 +11,7 @@ const QuickActions = () => {
       label: 'Create Post',
       description: 'Start creating your next social post',
       icon: Plus,
-      href: '/dashboard/posts?action=create',
+      href: '/posts',
       color: 'from-[#FF9B4F] to-[#FF6E00]',
     },
     {
@@ -19,7 +19,7 @@ const QuickActions = () => {
       label: 'View Analytics',
       description: 'Check your performance metrics',
       icon: BarChart3,
-      href: '/dashboard/analytics',
+      href: '/analytics',
       color: 'from-blue-500 to-blue-600',
     },
     {
@@ -27,7 +27,7 @@ const QuickActions = () => {
       label: 'Schedule Posts',
       description: 'Plan your content calendar',
       icon: CalendarIcon,
-      href: '/dashboard/calendar',
+      href: '/calendar',
       color: 'from-purple-500 to-purple-600',
     },
     {
@@ -35,7 +35,7 @@ const QuickActions = () => {
       label: 'Connect Account',
       description: 'Add new social media accounts',
       icon: Users,
-      href: '/dashboard/settings?tab=accounts',
+      href: '/accounts',
       color: 'from-green-500 to-green-600',
     },
   ];

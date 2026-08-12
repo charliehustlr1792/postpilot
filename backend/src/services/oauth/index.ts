@@ -4,7 +4,7 @@ import { twitterProvider } from "./twitter";
 import { linkedinProvider } from "./linkedin";
 import { facebookProvider, instagramProvider } from "./meta";
 
-export { getProviderConfig } from "./providers";
+export { getProviderConfig, listConfiguredPlatforms } from "./providers";
 export { exchangeAuthorizationCode } from "./exchange";
 
 const PROVIDERS: Record<Platform, OAuthProvider> = {

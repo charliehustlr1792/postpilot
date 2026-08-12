@@ -1,28 +1,60 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, ArrowRight } from 'lucide-react';
-import { PLATFORM_COLORS } from '@/lib/constants';
+import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
+import { Platform, Post } from '@/types/post';
+import { api } from '@/lib/api';
 import Link from 'next/link';
 
 interface ScheduledPost {
   id: string;
-  date: string; // YYYY-MM-DD format
-  platform: string;
+  date: string;
+  platform: Platform;
   time: string;
 }
 
-const CalendarPreview = () => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+const dayKey = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-  // Mock scheduled posts - replace with real data
-  const scheduledPosts: ScheduledPost[] = [
-    { id: '1', date: '2025-01-15', platform: 'TWITTER', time: '14:30' },
-    { id: '2', date: '2025-01-16', platform: 'INSTAGRAM', time: '18:00' },
-    { id: '3', date: '2025-01-16', platform: 'LINKEDIN', time: '09:00' },
-    { id: '4', date: '2025-01-18', platform: 'FACEBOOK', time: '16:00' },
-    { id: '5', date: '2025-01-20', platform: 'TWITTER', time: '12:00' },
-  ];
+const CalendarPreview = () => {
+  const { getToken, isLoaded } = useAuth();
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
+
+  const load = useCallback(async () => {
+    if (!isLoaded) return;
+    try {
+      const token = await getToken();
+      if (!token) {
+        setScheduledPosts([]);
+        return;
+      }
+      const { posts } = await api.getScheduledPosts(token);
+      const entries: ScheduledPost[] = [];
+      for (const post of posts as Post[]) {
+        for (const target of post.targets) {
+          if (target.status !== 'SCHEDULED' || !target.scheduledAt) continue;
+          const when = new Date(target.scheduledAt);
+          entries.push({
+            id: target.id,
+            date: dayKey(when),
+            platform: target.platform,
+            time: when.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false }),
+          });
+        }
+      }
+      entries.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+      setScheduledPosts(entries);
+    } catch {
+      setScheduledPosts([]);
+    }
+  }, [getToken, isLoaded]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const today = new Date();
   const year = currentDate.getFullYear();
@@ -30,7 +62,7 @@ const CalendarPreview = () => {
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'July', 'August', 'September', 'October', 'November', 'December',
   ];
 
   const firstDay = new Date(year, month, 1);
@@ -47,9 +79,17 @@ const CalendarPreview = () => {
   }
 
   const getPostsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return scheduledPosts.filter(post => post.date === dateStr);
+    return scheduledPosts.filter((post) => post.date === dayKey(date));
   };
+
+  const upcoming = useMemo(() => {
+    const now = new Date();
+    const start = dayKey(now);
+    const endDate = new Date(now);
+    endDate.setDate(endDate.getDate() + 7);
+    const end = dayKey(endDate);
+    return scheduledPosts.filter((p) => p.date >= start && p.date <= end).slice(0, 3);
+  }, [scheduledPosts]);
 
   const navigateMonth = (direction: number) => {
     setCurrentDate(new Date(year, month + direction, 1));
@@ -57,11 +97,10 @@ const CalendarPreview = () => {
 
   return (
     <div className="bg-white rounded-xl border border-[#EAE7E4] p-6">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-[#181817] text-lg font-bold">Upcoming Posts</h2>
         <Link
-          href="/dashboard/calendar"
+          href="/calendar"
           className="text-[#FF6E00] text-sm font-medium hover:text-[#FF9B4F] transition-colors flex items-center gap-1 group"
         >
           View calendar
@@ -69,7 +108,6 @@ const CalendarPreview = () => {
         </Link>
       </div>
 
-      {/* Calendar Header */}
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={() => navigateMonth(-1)}
@@ -90,9 +128,7 @@ const CalendarPreview = () => {
         </button>
       </div>
 
-      {/* Calendar Grid */}
       <div className="mb-4">
-        {/* Day Headers */}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
             <div key={index} className="text-center text-[#4D4946]/60 text-xs font-medium py-1">
@@ -101,7 +137,6 @@ const CalendarPreview = () => {
           ))}
         </div>
 
-        {/* Calendar Days */}
         <div className="grid grid-cols-7 gap-1">
           {days.map((day, index) => {
             const dayPosts = getPostsForDate(day);
@@ -126,9 +161,7 @@ const CalendarPreview = () => {
                       <div
                         key={i}
                         className="w-1 h-1 rounded-full"
-                        style={{ 
-                          backgroundColor: PLATFORM_COLORS[post.platform as keyof typeof PLATFORM_COLORS] 
-                        }}
+                        style={{ backgroundColor: PLATFORM_COLORS[post.platform] }}
                       />
                     ))}
                   </div>
@@ -139,10 +172,9 @@ const CalendarPreview = () => {
         </div>
       </div>
 
-      {/* Upcoming Posts List */}
       <div className="space-y-2">
         <h4 className="text-[#181817] font-semibold text-sm mb-3">Next 7 Days</h4>
-        {scheduledPosts.slice(0, 3).map((post) => (
+        {upcoming.map((post) => (
           <div
             key={post.id}
             className="flex items-center justify-between p-3 rounded-lg bg-[#F3EFEC] hover:bg-[#EAE7E4] transition-colors"
@@ -150,19 +182,21 @@ const CalendarPreview = () => {
             <div className="flex items-center gap-2">
               <div
                 className="w-2 h-2 rounded-full"
-                style={{ 
-                  backgroundColor: PLATFORM_COLORS[post.platform as keyof typeof PLATFORM_COLORS] 
-                }}
+                style={{ backgroundColor: PLATFORM_COLORS[post.platform] }}
               />
               <span className="text-[#181817] text-sm font-medium">
-                {new Date(post.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                {new Date(`${post.date}T00:00:00`).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                })}
               </span>
+              <span className="text-[#4D4946]/70 text-xs">{PLATFORM_LABELS[post.platform]}</span>
             </div>
             <span className="text-[#4D4946] text-xs">{post.time}</span>
           </div>
         ))}
 
-        {scheduledPosts.length === 0 && (
+        {upcoming.length === 0 && (
           <div className="text-center py-6">
             <CalendarIcon className="w-10 h-10 text-[#4D4946]/30 mx-auto mb-2" />
             <p className="text-[#4D4946]/60 text-xs">No posts scheduled</p>

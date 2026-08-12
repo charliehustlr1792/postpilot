@@ -16,11 +16,23 @@ export const PLATFORM_COLORS: Record<Platform, string> = {
 } as const;
 
 export const PLATFORM_LABELS: Record<Platform, string> = {
-  TWITTER:   'Twitter',
+  TWITTER:   'X',
   INSTAGRAM: 'Instagram',
   LINKEDIN:  'LinkedIn',
   FACEBOOK:  'Facebook',
 } as const;
+
+export const ALL_PLATFORMS: Platform[] = ['TWITTER', 'LINKEDIN', 'INSTAGRAM', 'FACEBOOK'];
+
+/** Platforms that need Meta App Review / business verification before OAuth can ship. */
+export const META_PLATFORMS: Platform[] = ['INSTAGRAM', 'FACEBOOK'];
+
+export function platformUnavailableReason(platform: Platform): string {
+  if (META_PLATFORMS.includes(platform)) {
+    return 'Coming soon — Meta requires business verification';
+  }
+  return 'Not configured yet';
+}
 
 export const POST_STATUS_COLORS: Record<PostStatus, string> = {
   DRAFT:     'bg-gray-100 text-gray-600 border-gray-200',

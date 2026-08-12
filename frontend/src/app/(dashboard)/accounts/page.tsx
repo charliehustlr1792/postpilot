@@ -4,14 +4,14 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { Plus, Trash2, Loader2, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/constants';
+import { PLATFORM_COLORS, PLATFORM_LABELS, ALL_PLATFORMS, platformUnavailableReason } from '@/lib/constants';
 import { Platform } from '@/types/post';
 import { api } from '@/lib/api';
 import { useAccounts } from '@/hooks/useAccounts';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { PlatformIcon } from '@/components/ui/PlatformIcon';
 
-const PLATFORMS: Platform[] = ['TWITTER', 'INSTAGRAM', 'LINKEDIN', 'FACEBOOK'];
+const PLATFORMS: Platform[] = ALL_PLATFORMS;
 
 // Human-readable copy for the failure reasons the callback can hand back.
 const CONNECT_ERROR_REASONS: Record<string, string> = {
@@ -32,7 +32,7 @@ const PlatformBadge = ({ platform, size = 'md' }: { platform: Platform; size?: '
 
 const AccountsPage = () => {
   const { getToken } = useAuth();
-  const { accounts, isLoading, error, refetch } = useAccounts();
+  const { accounts, availablePlatforms, isLoading, error, refetch } = useAccounts();
 
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const [connectingPlatform, setConnectingPlatform] = useState<Platform | null>(null);
@@ -167,13 +167,16 @@ const AccountsPage = () => {
           Sign in with the platform to authorize PostPilot to publish on your behalf
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {PLATFORMS.map((platform) => (
+          {PLATFORMS.map((platform) => {
+            const canConnect = availablePlatforms.includes(platform);
+            return (
             <div
               key={platform}
               className="flex flex-col items-center gap-3 p-5 border-2 border-[#EAE7E4] rounded-xl hover:border-[#FFD4B2] transition-colors"
             >
               <PlatformBadge platform={platform} />
               <span className="text-sm font-medium text-[#181817]">{PLATFORM_LABELS[platform]}</span>
+              {canConnect ? (
               <button
                 onClick={() => handleConnect(platform)}
                 disabled={connectingPlatform !== null}
@@ -186,8 +189,14 @@ const AccountsPage = () => {
                 )}
                 Connect
               </button>
+              ) : (
+                <p className="text-[#4D4946]/70 text-xs text-center leading-snug">
+                  {platformUnavailableReason(platform)}
+                </p>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

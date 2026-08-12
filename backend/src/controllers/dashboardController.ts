@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { clerkClient, getAuth } from '@clerk/express';
 import prisma from '../lib/db';
 import { AppError } from '../lib/AppError';
+import { listConfiguredPlatforms } from '../services/oauth/providers';
 
 // Reach/engagement are measured over this trailing window (matches what the
 // analytics overview used before consolidation).
@@ -46,7 +47,7 @@ export const getDashboardOverview = async (req: Request, res: Response) => {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - DASHBOARD_WINDOW_DAYS);
 
-    const [totalPosts, scheduledPosts, metrics] = await Promise.all([
+    const [totalPosts, scheduledPosts, metrics, connectedAccountCount] = await Promise.all([
         prisma.post.count({ where: { userId: resolvedUser.id } }),
         prisma.post.count({
             where: { userId: resolvedUser.id, targets: { some: { status: 'SCHEDULED' } } },
@@ -55,6 +56,9 @@ export const getDashboardOverview = async (req: Request, res: Response) => {
             where: { userId: resolvedUser.id, recordedAt: { gte: startDate } },
             _sum: { reach: true },
             _avg: { engagementRate: true },
+        }),
+        prisma.socialAccount.count({
+            where: { userId: resolvedUser.id, isActive: true },
         }),
     ]);
 
@@ -65,5 +69,7 @@ export const getDashboardOverview = async (req: Request, res: Response) => {
             engagementRate: metrics._avg?.engagementRate || 0,
             scheduledPosts,
         },
+        connectedAccountCount,
+        availablePlatforms: listConfiguredPlatforms(),
     });
 };

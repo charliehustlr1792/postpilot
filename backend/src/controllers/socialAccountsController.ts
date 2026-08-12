@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { getAuth } from "@clerk/express";
 import { encrypt } from "../lib/crypto";
 import { AppError } from "../lib/AppError";
+import { listConfiguredPlatforms } from "../services/oauth/providers";
 
 //get all connected soical accounts
 export const getSocialAccounts = async (req: Request, res: Response) => {
@@ -24,7 +25,10 @@ export const getSocialAccounts = async (req: Request, res: Response) => {
             createdAt: true,
         }
     })
-    res.status(200).json({ accounts })
+    res.status(200).json({
+        accounts,
+        availablePlatforms: listConfiguredPlatforms(),
+    })
 }
 
 export const connectAccount = async (req: Request, res: Response) => {

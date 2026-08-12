@@ -24,6 +24,10 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
+# Needed at runtime by middleware.ts to proxy /api to the backend.
+ARG BACKEND_INTERNAL_URL
+ENV BACKEND_INTERNAL_URL=$BACKEND_INTERNAL_URL
+
 COPY --from=builder /app/public ./public
 # Standalone output bundles a minimal server.js + node_modules.
 COPY --from=builder /app/.next/standalone ./
