@@ -1,11 +1,14 @@
 import type { Platform, PostStatus } from '@/types/post';
-import { Twitter, Instagram, Linkedin, Facebook, type LucideIcon } from 'lucide-react';
+import { Twitter, Instagram, Linkedin, Facebook } from 'lucide-react';
+import type { ComponentType } from 'react';
+import { RedditIcon } from '@/components/ui/BrandIcons';
 
-export const PLATFORM_ICONS: Record<Platform, LucideIcon> = {
+export const PLATFORM_ICONS: Record<Platform, ComponentType<{ className?: string }>> = {
   TWITTER:   Twitter,
   INSTAGRAM: Instagram,
   LINKEDIN:  Linkedin,
   FACEBOOK:  Facebook,
+  REDDIT:    RedditIcon,
 } as const;
 
 export const PLATFORM_COLORS: Record<Platform, string> = {
@@ -13,6 +16,7 @@ export const PLATFORM_COLORS: Record<Platform, string> = {
   INSTAGRAM: '#FF6E00',
   LINKEDIN:  '#FF9B4F',
   FACEBOOK:  '#FFB67D',
+  REDDIT:    '#FF4500',
 } as const;
 
 export const PLATFORM_LABELS: Record<Platform, string> = {
@@ -20,15 +24,23 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
   INSTAGRAM: 'Instagram',
   LINKEDIN:  'LinkedIn',
   FACEBOOK:  'Facebook',
+  REDDIT:    'Reddit',
 } as const;
 
-export const ALL_PLATFORMS: Platform[] = ['TWITTER', 'LINKEDIN', 'INSTAGRAM', 'FACEBOOK'];
+export const ALL_PLATFORMS: Platform[] = ['TWITTER', 'LINKEDIN', 'REDDIT', 'INSTAGRAM', 'FACEBOOK'];
 
 /** Platforms that need Meta App Review / business verification before OAuth can ship. */
 export const META_PLATFORMS: Platform[] = ['INSTAGRAM', 'FACEBOOK'];
 
+/**
+ * Platforms shown in the UI but not open for public connection yet. Meta needs
+ * business verification; Reddit's API app creation is gated behind Reddit's
+ * approval process, so it stays disabled until a key is granted.
+ */
+export const COMING_SOON_PLATFORMS: Platform[] = [...META_PLATFORMS, 'REDDIT'];
+
 export function platformUnavailableReason(platform: Platform): string {
-  if (META_PLATFORMS.includes(platform)) {
+  if (COMING_SOON_PLATFORMS.includes(platform)) {
     return 'Coming soon';
   }
   return 'Not configured yet';

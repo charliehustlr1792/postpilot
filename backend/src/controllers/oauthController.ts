@@ -9,7 +9,7 @@ import {
     setOAuthStateCookie,
 } from "../lib/oauthState";
 import { Platform } from "../types/enums";
-import { getOAuthProvider, getProviderConfig } from "../services/oauth";
+import { getOAuthProvider, getProviderConfig, isPlatformDisabled } from "../services/oauth";
 import { AppError } from "../lib/AppError";
 
 // Maps the lowercase URL segment (e.g. "twitter") to a Platform enum value.
@@ -39,6 +39,9 @@ export const startOAuth = async (req: Request, res: Response) => {
     if (!platform) {
         throw new AppError(400, "Unsupported platform");
     }
+    if (isPlatformDisabled(platform)) {
+        throw new AppError(503, `${platform} connections are not available yet`);
+    }
 
     const config = getProviderConfig(platform);
     if (!config.clientId || !config.clientSecret) {
@@ -63,6 +66,11 @@ export const startOAuth = async (req: Request, res: Response) => {
             .digest("base64url");
         authParams.set("code_challenge", challenge);
         authParams.set("code_challenge_method", "S256");
+    }
+
+    // Provider-specific extras (e.g. Reddit's duration=permanent).
+    for (const [key, value] of Object.entries(config.extraAuthParams ?? {})) {
+        authParams.set(key, value);
     }
 
     setOAuthStateCookie(res, { state, platform, clerkUserId: userId, codeVerifier });

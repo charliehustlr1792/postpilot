@@ -10,4 +10,5 @@ export enum Platform {
   LINKEDIN = "LINKEDIN",
   INSTAGRAM = "INSTAGRAM",
   FACEBOOK = "FACEBOOK",
+  REDDIT = "REDDIT",
 }

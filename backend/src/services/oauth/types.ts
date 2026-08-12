@@ -26,6 +26,9 @@ export interface OAuthProviderConfig {
     tokenUrl: string;
     scopes: string[];
     usesPKCE: boolean;
+    // Extra provider-specific params appended to the authorization URL (e.g.
+    // Reddit's `duration=permanent` to receive a refresh token).
+    extraAuthParams?: Record<string, string>;
     clientId: string;
     clientSecret: string;
     redirectUri: string;

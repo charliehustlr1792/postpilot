@@ -6,7 +6,7 @@ import { OAuthProviderConfig } from "./types";
 // from env so the same code works across local/staging/prod.
 type StaticProviderConfig = Pick<
     OAuthProviderConfig,
-    "authorizationUrl" | "tokenUrl" | "scopes" | "usesPKCE"
+    "authorizationUrl" | "tokenUrl" | "scopes" | "usesPKCE" | "extraAuthParams"
 >;
 
 const STATIC_CONFIG: Record<Platform, StaticProviderConfig> = {
@@ -35,6 +35,15 @@ const STATIC_CONFIG: Record<Platform, StaticProviderConfig> = {
         scopes: ["public_profile", "pages_show_list", "instagram_basic", "instagram_content_publish"],
         usesPKCE: false,
     },
+    [Platform.REDDIT]: {
+        authorizationUrl: "https://www.reddit.com/api/v1/authorize",
+        tokenUrl: "https://www.reddit.com/api/v1/access_token",
+        // identity → /me, submit → post, read → post insights via /api/info.
+        scopes: ["identity", "submit", "read"],
+        usesPKCE: false,
+        // `permanent` makes Reddit issue a refresh token (default is a 1h token).
+        extraAuthParams: { duration: "permanent" },
+    },
 };
 
 function env(name: string): string {
@@ -60,9 +69,20 @@ export function getProviderConfig(platform: Platform): OAuthProviderConfig {
     };
 }
 
+// Platforms whose integration code exists but that aren't open for public
+// connection yet (e.g. Reddit — API app creation is gated behind Reddit's
+// approval). They stay disabled regardless of whether env credentials are set.
+const DISABLED_PLATFORMS = new Set<Platform>([Platform.REDDIT]);
+
+/** True if the platform is intentionally turned off for connections. */
+export function isPlatformDisabled(platform: Platform): boolean {
+    return DISABLED_PLATFORMS.has(platform);
+}
+
 /** Platforms whose client id and secret are both set — the ones the UI can offer to connect. */
 export function listConfiguredPlatforms(): Platform[] {
     return (Object.values(Platform) as Platform[]).filter((platform) => {
+        if (isPlatformDisabled(platform)) return false;
         const config = getProviderConfig(platform);
         return Boolean(config.clientId && config.clientSecret);
     });

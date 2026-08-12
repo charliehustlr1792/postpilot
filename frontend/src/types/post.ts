@@ -1,7 +1,7 @@
 // Canonical platform and status types — uppercase strings matching the backend Prisma enums exactly.
 // The backend supports 4 platforms. Any additional platforms (TikTok, Pinterest, etc.)
 // must be added to the backend schema first before adding them here.
-export type Platform = 'TWITTER' | 'INSTAGRAM' | 'LINKEDIN' | 'FACEBOOK';
+export type Platform = 'TWITTER' | 'INSTAGRAM' | 'LINKEDIN' | 'FACEBOOK' | 'REDDIT';
 export type PostStatus = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'FAILED';
 export type Plan = 'FREE' | 'PRO' | 'ENTERPRISE';
 

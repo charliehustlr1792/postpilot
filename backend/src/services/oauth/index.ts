@@ -3,8 +3,9 @@ import { OAuthProvider } from "./types";
 import { twitterProvider } from "./twitter";
 import { linkedinProvider } from "./linkedin";
 import { facebookProvider, instagramProvider } from "./meta";
+import { redditProvider } from "./reddit";
 
-export { getProviderConfig, listConfiguredPlatforms } from "./providers";
+export { getProviderConfig, listConfiguredPlatforms, isPlatformDisabled } from "./providers";
 export { exchangeAuthorizationCode } from "./exchange";
 
 const PROVIDERS: Record<Platform, OAuthProvider> = {
@@ -12,6 +13,7 @@ const PROVIDERS: Record<Platform, OAuthProvider> = {
     [Platform.LINKEDIN]: linkedinProvider,
     [Platform.FACEBOOK]: facebookProvider,
     [Platform.INSTAGRAM]: instagramProvider,
+    [Platform.REDDIT]: redditProvider,
 };
 
 export function getOAuthProvider(platform: Platform): OAuthProvider {

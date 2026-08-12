@@ -9,6 +9,7 @@ import { publishToTwitter, fetchTwitterInsights } from './platforms/twitterServi
 import { publishToInstagram, fetchInstagramInsights } from './platforms/instagramService';
 import { publishToLinkedIn, fetchLinkedInInsights } from './platforms/linkedinService';
 import { publishToFacebook, fetchFacebookInsights } from './platforms/facebookService';
+import { publishToReddit, fetchRedditInsights } from './platforms/redditService';
 
 // Routes a publish request to the right platform service. Each service owns its
 // API calls, validation, and error mapping (see services/platforms/).
@@ -20,6 +21,7 @@ export const publishPostToSocialMedia = async (post: PublishablePost): Promise<P
       case 'INSTAGRAM': return await publishToInstagram(post);
       case 'LINKEDIN': return await publishToLinkedIn(post);
       case 'FACEBOOK': return await publishToFacebook(post);
+      case 'REDDIT': return await publishToReddit(post);
       default: throw new Error(`Unsupported platform: ${post.account.platform}`);
     }
   } catch (error) {
@@ -40,6 +42,7 @@ export const fetchPostInsights = async (
     case 'INSTAGRAM': return fetchInstagramInsights(platformPostId, accessToken);
     case 'LINKEDIN': return fetchLinkedInInsights(platformPostId, accessToken);
     case 'FACEBOOK': return fetchFacebookInsights(platformPostId, accessToken);
+    case 'REDDIT': return fetchRedditInsights(platformPostId, accessToken);
     default: throw new Error(`Unsupported platform: ${platform}`);
   }
 };
@@ -116,6 +119,12 @@ export const validatePostForPlatform = (post: PublishablePost): { valid: boolean
     case 'FACEBOOK':
       if (post.content.length > 63206) {
         errors.push('Facebook posts cannot exceed 63206 characters');
+      }
+      break;
+
+    case 'REDDIT':
+      if (post.content.length > 40000) {
+        errors.push('Reddit posts cannot exceed 40000 characters');
       }
       break;
   }

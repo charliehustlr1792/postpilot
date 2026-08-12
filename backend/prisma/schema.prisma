@@ -167,6 +167,7 @@ enum Platform {
   INSTAGRAM
   LINKEDIN
   FACEBOOK
+  REDDIT
 }
 
 enum PostStatus {
