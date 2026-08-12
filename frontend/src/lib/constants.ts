@@ -29,7 +29,7 @@ export const META_PLATFORMS: Platform[] = ['INSTAGRAM', 'FACEBOOK'];
 
 export function platformUnavailableReason(platform: Platform): string {
   if (META_PLATFORMS.includes(platform)) {
-    return 'Coming soon — Meta requires business verification';
+    return 'Coming soon';
   }
   return 'Not configured yet';
 }

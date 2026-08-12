@@ -44,8 +44,7 @@ const ConnectAccountsCard = ({ availablePlatforms }: ConnectAccountsCardProps) =
         <div>
           <h2 className="text-[#181817] text-lg font-bold mb-1">Connect a social account</h2>
           <p className="text-[#4D4946] text-sm">
-            PostPilot publishes to the accounts you connect. Start with X or LinkedIn — Instagram
-            and Facebook will be available after Meta business verification.
+            PostPilot publishes to the accounts you connect.
           </p>
         </div>
       </div>
