@@ -4,7 +4,10 @@ import { PublishResult } from '../../types/publishResult';
 import { PlatformPublishError } from '../../types/publishError';
 import { InsightsResult } from '../../types/insights';
 
-const LINKEDIN_VERSION = '202405';
+// LinkedIn only keeps ~12 monthly versions (YYYYMM) active and deprecates older
+// ones, so this is env-overridable — bump LINKEDIN_API_VERSION to the current
+// version from LinkedIn's changelog without a code change when it rotates.
+const LINKEDIN_VERSION = process.env.LINKEDIN_API_VERSION ?? '202605';
 const LINKEDIN_MAX_CHARS = 3000;
 
 // Publishes a text post to LinkedIn via the Posts API, authored by the connected
@@ -98,10 +101,16 @@ function toLinkedInError(error: unknown): PlatformPublishError {
       );
     }
     if (status === 429) {
+      // Rate limit is transient — let BullMQ retry with backoff.
       return new PlatformPublishError('LinkedIn API rate limit exceeded; try again later');
     }
+    // Any other 4xx (e.g. a deprecated LinkedIn-Version, malformed post) is a
+    // client-side condition a retry cannot resolve; 5xx/network is transient.
+    const isPermanent = typeof status === 'number' && status >= 400 && status < 500;
     return new PlatformPublishError(
-      message ? `LinkedIn API error: ${message}` : `LinkedIn API error${status ? ` (HTTP ${status})` : ''}`
+      message ? `LinkedIn API error: ${message}` : `LinkedIn API error${status ? ` (HTTP ${status})` : ''}`,
+      false,
+      isPermanent
     );
   }
   return new PlatformPublishError(
