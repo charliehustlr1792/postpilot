@@ -1,4 +1,4 @@
-import { Job } from 'bullmq'
+import { Job, UnrecoverableError } from 'bullmq'
 import prisma from '../lib/db'
 import { publishPostToSocialMedia, refreshAccessToken } from '../services/socialMediaService'
 import { PostPublishJobData } from '../types/postPublishJobData'
@@ -125,6 +125,13 @@ export const processPostPublish = async (job: Job<PostPublishJobData>) => {
                 attempts: { increment: 1 },
             },
         })
+
+        // Permanent failures (quota/credits exhausted, duplicate/invalid content,
+        // insufficient permissions) won't succeed on retry — tell BullMQ to move
+        // the job straight to failed instead of burning through its attempts.
+        if (error instanceof PlatformPublishError && error.isPermanent) {
+            throw new UnrecoverableError(message)
+        }
 
         throw error
     }

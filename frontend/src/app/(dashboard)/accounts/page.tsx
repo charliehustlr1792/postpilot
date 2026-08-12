@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import { Plus, Trash2, Loader2, Link2 } from 'lucide-react';
+import { Plus, Trash2, Loader2, Link2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { PLATFORM_COLORS, PLATFORM_LABELS, ALL_PLATFORMS, platformUnavailableReason } from '@/lib/constants';
 import { Platform } from '@/types/post';
@@ -36,6 +36,10 @@ const AccountsPage = () => {
 
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const [connectingPlatform, setConnectingPlatform] = useState<Platform | null>(null);
+
+  // One account per platform is allowed (unique userId+platform), so a
+  // connected platform should read as "Connected" rather than offer Connect.
+  const connectedPlatforms = new Set(accounts.map((a) => a.platform));
 
   // Surface the result of the OAuth round-trip (we land back here with a
   // ?connected=success|error query param), then strip it from the URL.
@@ -168,6 +172,7 @@ const AccountsPage = () => {
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {PLATFORMS.map((platform) => {
+            const isConnected = connectedPlatforms.has(platform);
             const canConnect = availablePlatforms.includes(platform);
             return (
             <div
@@ -176,7 +181,12 @@ const AccountsPage = () => {
             >
               <PlatformBadge platform={platform} />
               <span className="text-sm font-medium text-[#181817]">{PLATFORM_LABELS[platform]}</span>
-              {canConnect ? (
+              {isConnected ? (
+                <span className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-green-600 bg-green-50 rounded-lg">
+                  <Check className="w-4 h-4" />
+                  Connected
+                </span>
+              ) : canConnect ? (
               <button
                 onClick={() => handleConnect(platform)}
                 disabled={connectingPlatform !== null}

@@ -63,6 +63,13 @@ const PostCard: React.FC<PostCardProps> = ({ post, viewMode, onEdit, onDelete, o
 
   const statusInfo = getStatusInfo();
 
+  // Surface the platform's failure reason (e.g. "Twitter API error: credits
+  // depleted") from the first failed target so the user knows why it didn't post.
+  const failureReason =
+    status === 'FAILED'
+      ? post.targets.find((t) => t.status === 'FAILED' && t.error)?.error ?? null
+      : null;
+
   const platformBadges = (
     <>
       {platforms.map((platform) => (
@@ -170,6 +177,13 @@ const PostCard: React.FC<PostCardProps> = ({ post, viewMode, onEdit, onDelete, o
             {/* Post Content */}
             <p className="text-[#181817] text-sm mb-2 line-clamp-2">{post.content}</p>
 
+            {/* Failure reason */}
+            {failureReason && (
+              <p className="text-red-600 text-xs mb-2 line-clamp-2" title={failureReason}>
+                {failureReason}
+              </p>
+            )}
+
             {/* Footer */}
             <div className="flex items-center justify-between">
               <span className="text-[#4D4946]/60 text-xs">{statusInfo.time}</span>
@@ -219,6 +233,13 @@ const PostCard: React.FC<PostCardProps> = ({ post, viewMode, onEdit, onDelete, o
           </span>
           <span className="text-[#4D4946]/60 text-xs">{statusInfo.time}</span>
         </div>
+
+        {/* Failure reason */}
+        {failureReason && (
+          <p className="text-red-600 text-xs mb-3 line-clamp-2" title={failureReason}>
+            {failureReason}
+          </p>
+        )}
 
         {/* Metrics */}
         {metricsRow('flex items-center justify-between pt-3 border-t border-[#EAE7E4] text-xs text-[#4D4946]/70')}

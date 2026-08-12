@@ -84,20 +84,31 @@ function toTwitterError(error: unknown): PlatformPublishError {
 
     switch (status) {
       case 401:
+        // Auth error → the processor refreshes the token and retries once.
         return new PlatformPublishError(
           `Twitter authentication failed; the access token is invalid or expired${detail ? `: ${detail}` : ''}`,
           true
         );
       case 403:
+        // Duplicate content / insufficient permissions — retrying won't help.
         return new PlatformPublishError(
-          `Twitter rejected the post${detail ? `: ${detail}` : ' (duplicate content or insufficient permissions)'}`
+          `Twitter rejected the post${detail ? `: ${detail}` : ' (duplicate content or insufficient permissions)'}`,
+          false,
+          true
         );
       case 429:
+        // Rate limit is transient — let BullMQ retry with backoff.
         return new PlatformPublishError('Twitter API rate limit exceeded; try again later');
-      default:
+      default: {
+        // Any other 4xx (e.g. 402/400 "credits depleted", monthly cap) is a
+        // client-side condition a retry cannot resolve; 5xx/network is transient.
+        const isPermanent = typeof status === 'number' && status >= 400 && status < 500;
         return new PlatformPublishError(
-          detail ? `Twitter API error: ${detail}` : `Twitter API error${status ? ` (HTTP ${status})` : ''}`
+          detail ? `Twitter API error: ${detail}` : `Twitter API error${status ? ` (HTTP ${status})` : ''}`,
+          false,
+          isPermanent
         );
+      }
     }
   }
   return new PlatformPublishError(
