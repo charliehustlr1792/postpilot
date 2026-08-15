@@ -58,7 +58,7 @@ flowchart TB
     SOC[Social APIs - X / LinkedIn / Meta / Reddit]
 
     B --> MW --> RW --> API
-    B -. get session token .-> CLERK
+    B -. session token .-> CLERK
     API --> DB
     API --> REDIS
     WRK --> REDIS
@@ -66,8 +66,8 @@ flowchart TB
     WRK --> SOC
     API --> CLOUD
     API --> RESEND
-    CLERK -. user.created/updated/deleted .-> API
-    API -. OAuth connect .-> SOC
+    CLERK -. user webhooks .-> API
+    API -. oauth connect .-> SOC
 ```
 
 ### Scheduled publish flow
@@ -78,21 +78,21 @@ sequenceDiagram
     participant FE as Next.js proxy
     participant API as Express API
     participant DB as PostgreSQL
-    participant Q as BullMQ (Redis)
+    participant Q as BullMQ Redis
     participant W as Publish Worker
     participant S as Social API
 
-    U->>FE: POST /api/posts/:id/schedule
-    FE->>API: proxied request + Bearer token
-    API->>DB: load post + targets (owner check)
+    U->>FE: POST schedule request
+    FE->>API: proxied request plus Bearer token
+    API->>DB: load post and targets, owner check
     API->>Q: add delayed job per target
-    API->>DB: mark targets SCHEDULED + create ScheduledJob rows
+    API->>DB: mark targets SCHEDULED and create ScheduledJob rows
     Note over Q,W: scheduled delay elapses
-    Q->>W: deliver job (concurrency 5)
-    W->>DB: load target + encrypted token
+    Q->>W: deliver job, concurrency 5
+    W->>DB: load target and encrypted token
     W->>S: publish with decrypted token
-    S-->>W: platform post id / error
-    W->>DB: mark PUBLISHED or FAILED (+ error)
+    S-->>W: platform post id or error
+    W->>DB: mark PUBLISHED or FAILED
 ```
 
 ### OAuth account-connect flow
@@ -101,20 +101,20 @@ sequenceDiagram
 sequenceDiagram
     actor U as User
     participant API as Express API
-    participant P as Provider (X/LinkedIn/Meta)
+    participant P as OAuth Provider
     participant DB as PostgreSQL
 
-    U->>API: GET /api/accounts/:platform/auth (authenticated)
-    API->>API: build consent URL + sign HttpOnly state cookie
-    API-->>U: { url }
+    U->>API: GET account auth, authenticated
+    API->>API: build consent URL and sign HttpOnly state cookie
+    API-->>U: return consent url
     U->>P: browser redirect to consent screen
-    P-->>U: redirect to /callback?code&state
-    U->>API: GET /api/accounts/:platform/callback (state cookie only)
-    API->>API: verify signed state + PKCE
+    P-->>U: redirect to callback with code and state
+    U->>API: GET account callback, state cookie only
+    API->>API: verify signed state and PKCE
     API->>P: exchange code for tokens
     API->>P: fetch profile
-    API->>DB: upsert SocialAccount (tokens AES-256-GCM encrypted)
-    API-->>U: redirect to /accounts?connected=success
+    API->>DB: upsert SocialAccount, tokens AES-256-GCM encrypted
+    API-->>U: redirect to accounts connected success
 ```
 
 ## Run with Docker
