@@ -24,6 +24,99 @@
 ![BullMQ](https://img.shields.io/badge/BullMQ-EF4444?style=for-the-badge&logo=bull&logoColor=white)
 ![Clerk](https://img.shields.io/badge/Clerk-6C47FF?style=for-the-badge&logo=clerk&logoColor=white)
 
+## Architecture
+
+PostPilot is a two-service app: a Next.js frontend and an Express API, backed by
+PostgreSQL and Redis. The frontend reverse-proxies `/api/*` to the backend
+(`frontend/next.config.ts`) so the browser, the Clerk session, and the OAuth
+state cookie are all same-origin. Clerk handles authentication; a **Model B**
+schema fans one `Post` out to one `PostTarget` per platform so each platform
+publishes and fails independently. Scheduled publishing and periodic analytics
+sync run on BullMQ workers hosted in the same backend process.
+
+### System overview
+
+```mermaid
+flowchart TB
+    B[Browser SPA - Next.js 15 / React 19]
+
+    subgraph fe[Frontend - Next.js on Vercel]
+      MW[clerkMiddleware route protection]
+      RW[rewrites /api to backend]
+    end
+
+    subgraph be[Backend - Express 5 on Render]
+      API[REST API /api]
+      WRK[BullMQ workers - publish + analytics sync]
+    end
+
+    DB[(PostgreSQL - Supabase)]
+    REDIS[(Redis - Upstash)]
+    CLERK[Clerk - auth + user webhooks]
+    CLOUD[Cloudinary - image uploads]
+    RESEND[Resend - invite emails]
+    SOC[Social APIs - X / LinkedIn / Meta / Reddit]
+
+    B --> MW --> RW --> API
+    B -. get session token .-> CLERK
+    API --> DB
+    API --> REDIS
+    WRK --> REDIS
+    WRK --> DB
+    WRK --> SOC
+    API --> CLOUD
+    API --> RESEND
+    CLERK -. user.created/updated/deleted .-> API
+    API -. OAuth connect .-> SOC
+```
+
+### Scheduled publish flow
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant FE as Next.js proxy
+    participant API as Express API
+    participant DB as PostgreSQL
+    participant Q as BullMQ (Redis)
+    participant W as Publish Worker
+    participant S as Social API
+
+    U->>FE: POST /api/posts/:id/schedule
+    FE->>API: proxied request + Bearer token
+    API->>DB: load post + targets (owner check)
+    API->>Q: add delayed job per target
+    API->>DB: mark targets SCHEDULED + create ScheduledJob rows
+    Note over Q,W: scheduled delay elapses
+    Q->>W: deliver job (concurrency 5)
+    W->>DB: load target + encrypted token
+    W->>S: publish with decrypted token
+    S-->>W: platform post id / error
+    W->>DB: mark PUBLISHED or FAILED (+ error)
+```
+
+### OAuth account-connect flow
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant API as Express API
+    participant P as Provider (X/LinkedIn/Meta)
+    participant DB as PostgreSQL
+
+    U->>API: GET /api/accounts/:platform/auth (authenticated)
+    API->>API: build consent URL + sign HttpOnly state cookie
+    API-->>U: { url }
+    U->>P: browser redirect to consent screen
+    P-->>U: redirect to /callback?code&state
+    U->>API: GET /api/accounts/:platform/callback (state cookie only)
+    API->>API: verify signed state + PKCE
+    API->>P: exchange code for tokens
+    API->>P: fetch profile
+    API->>DB: upsert SocialAccount (tokens AES-256-GCM encrypted)
+    API-->>U: redirect to /accounts?connected=success
+```
+
 ## Run with Docker
 
 Runs the full stack locally: frontend, backend, Postgres, and Redis.
