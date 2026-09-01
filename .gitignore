@@ -1,7 +1,5 @@
 ROADMAP.md
 BUILD_LOG.md
-QUESTIONS.md
-INTERVIEW.md
 
 # Root env for docker compose interpolation (not the app env files)
 .env
